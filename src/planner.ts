@@ -151,10 +151,22 @@ function transitionFor(index: number, options: ReeloraAdvancedOptions): PlannedS
   return index % 4 === 0 ? "dissolve" : index % 3 === 0 ? "fade" : "cut";
 }
 
+function beatFriendlyTotal(total: number, bpm: number | undefined, slots: number): number {
+  if (!bpm || !Number.isFinite(bpm) || bpm < 60 || bpm > 220 || slots <= 0) return total;
+  const beat = 60 / bpm;
+  const halfBeat = beat / 2;
+  const targetPerShot = total / slots;
+  const snappedPerShot = Math.max(halfBeat * 2, Math.round(targetPerShot / halfBeat) * halfBeat);
+  const snappedTotal = snappedPerShot * slots;
+  // Do not let beat alignment materially override the user's requested duration.
+  return Math.abs(snappedTotal - total) / total <= 0.12 ? snappedTotal : total;
+}
+
 export function buildEditPlan(args: {
   candidates: CandidateSegment[];
   outroPath: string;
   musicPath?: string;
+  musicBpm?: number;
   highlight: HighlightIntent;
   targetContentDuration?: number;
   audioMode?: AudioMode;
@@ -166,9 +178,12 @@ export function buildEditPlan(args: {
   const distribution = normalizeDistribution(options.distribution!);
   const style = STYLE_PROFILES[options.style ?? "premium"];
   const automaticDuration = Math.max(8, Math.min(24, args.candidates.length * 1.15 * style.shotLengthMultiplier));
-  const requestedTotal = Math.max(6, Math.min(args.targetContentDuration ?? automaticDuration, 45));
+  const requestedTotalRaw = Math.max(6, Math.min(args.targetContentDuration ?? automaticDuration, 45));
   const counts = countsForDistribution(distribution, 10);
   const pattern = interleavedPattern(counts);
+  const requestedTotal = options.beatSync !== false && args.musicPath
+    ? beatFriendlyTotal(requestedTotalRaw, args.musicBpm, pattern.length)
+    : requestedTotalRaw;
   const selected: Array<CandidateSegment & { shotType: ShotType }> = [];
   const used: CandidateSegment[] = [];
 
@@ -193,6 +208,11 @@ export function buildEditPlan(args: {
   const plannedDuration = shots.reduce((sum, shot) => sum + shot.targetDuration, 0);
   if (plannedDuration <= 0) throw new Error("Unable to construct a non-empty edit plan.");
 
+  const runtimeOptions = {
+    ...options,
+    musicBpm: args.musicBpm,
+  } as EditPlan["options"];
+
   return {
     highlight: args.highlight,
     targetContentDuration: Number(plannedDuration.toFixed(3)),
@@ -201,6 +221,6 @@ export function buildEditPlan(args: {
     outroPath: args.outroPath,
     musicPath: args.musicPath,
     audioMode: args.musicPath ? (args.audioMode === "mix" ? "mix" : "music") : args.audioMode ?? "silent",
-    options: options as EditPlan["options"],
+    options: runtimeOptions,
   };
 }
