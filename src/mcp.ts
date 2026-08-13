@@ -1,75 +1,202 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { analyzeReeloraRequest, editReel } from "./engine.js";
+import { analyzeReeloraRequest, batchEditReels, createEditVariants, editReel, reeloraDataDir } from "./engine.js";
+import { REELORA_FEATURES } from "./features.js";
+import { listBrandProfiles, saveBrandProfile } from "./preferences.js";
 
 const highlightSchema = z.enum([
   "top_wear",
   "pants",
+  "skirt",
+  "dress",
+  "shoes",
+  "bag",
   "fabric",
   "print",
+  "logo",
+  "neckline",
+  "sleeves",
   "fit",
   "front_back",
   "general",
 ]);
+const audioModeSchema = z.enum(["silent", "music", "original", "mix"]);
+const styleSchema = z.enum(["premium", "minimal", "fashion", "fast_ecommerce", "cinematic", "luxury", "clean_commercial"]);
+const platformSchema = z.enum(["instagram_reels", "tiktok", "youtube_shorts", "facebook_reels"]);
+const transitionSchema = z.enum(["auto", "cuts", "soft", "motion"]);
+const encoderSchema = z.enum(["auto", "libx264", "h264_nvenc", "h264_qsv", "h264_amf"]);
 
-const audioModeSchema = z.enum(["silent", "music", "original"]);
+const distributionSchema = z.object({
+  focus: z.number().min(0),
+  wholeBody: z.number().min(0),
+  detail: z.number().min(0),
+});
+const regionSchema = z.object({
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().positive().max(1),
+  height: z.number().positive().max(1),
+  confidence: z.number().min(0).max(1).optional(),
+});
+const visionObservationSchema = z.object({
+  sourceIndex: z.number().int().min(0),
+  time: z.number().min(0),
+  product: regionSchema.optional(),
+  face: regionSchema.optional(),
+  hands: z.array(regionSchema).optional(),
+  fullBody: regionSchema.optional(),
+  pose: z.enum(["front", "side", "back", "walking", "detail", "unknown"]).optional(),
+  variant: z.string().optional(),
+  productVisibility: z.number().min(0).max(1).optional(),
+  occlusion: z.number().min(0).max(1).optional(),
+  blur: z.number().min(0).max(1).optional(),
+  confidence: z.number().min(0).max(1).optional(),
+});
+
+const advancedOptionsSchema = z.object({
+  style: styleSchema.optional(),
+  platform: platformSchema.optional(),
+  distribution: distributionSchema.optional(),
+  autoDuration: z.boolean().optional(),
+  retentionEditing: z.boolean().optional(),
+  dynamicSubjectTracking: z.boolean().optional(),
+  beatSync: z.boolean().optional(),
+  musicEnergyMatching: z.boolean().optional(),
+  outroBeatAlignment: z.boolean().optional(),
+  audioDucking: z.boolean().optional(),
+  preserveOriginalAudio: z.boolean().optional(),
+  duplicateShotDetection: z.boolean().optional(),
+  poseVariety: z.boolean().optional(),
+  smartTransitions: z.boolean().optional(),
+  productColorLock: z.boolean().optional(),
+  fabricTextureGuard: z.boolean().optional(),
+  logoPrintLock: z.boolean().optional(),
+  faceIntegrityGuard: z.boolean().optional(),
+  handIntegrityGuard: z.boolean().optional(),
+  cropSafetyZones: z.boolean().optional(),
+  autoOrientation: z.boolean().optional(),
+  frameRateNormalization: z.boolean().optional(),
+  slowMotionFromHighFps: z.boolean().optional(),
+  stabilization: z.boolean().optional(),
+  blurFilter: z.boolean().optional(),
+  occlusionFilter: z.boolean().optional(),
+  badPoseFilter: z.boolean().optional(),
+  variantBalance: z.boolean().optional(),
+  singleModelConsistency: z.boolean().optional(),
+  referenceFace: z.string().optional(),
+  referenceProduct: z.string().optional(),
+  brandProfile: z.string().optional(),
+  transitionMode: transitionSchema.optional(),
+  autoThumbnail: z.boolean().optional(),
+  coverCrop: z.boolean().optional(),
+  qualityReport: z.boolean().optional(),
+  editDecisionReport: z.boolean().optional(),
+  beforeAfterValidation: z.boolean().optional(),
+  autoReeditOnValidationFailure: z.boolean().optional(),
+  noGenerativeMode: z.literal(true).optional(),
+  proxyAnalysis: z.boolean().optional(),
+  hardwareEncoder: encoderSchema.optional(),
+  targetFileSizeMb: z.number().min(2).max(500).optional(),
+  versionOutputs: z.boolean().optional(),
+  confidenceThreshold: z.number().min(0).max(1).optional(),
+  visionObservations: z.array(visionObservationSchema).optional(),
+});
+
+const editInputSchema = {
+  rawVideos: z.array(z.string().min(1)).min(1).describe("Raw source videos as local paths, file:// URLs, mounted upload paths, or HTTPS URLs."),
+  outroVideo: z.string().min(1).describe("Required ending/outro video. Reelora preserves it and places it last."),
+  music: z.string().min(1).optional().describe("Optional supplied music. Reelora never generates voice-over."),
+  highlight: highlightSchema.default("general").describe("Product region Reelora should prioritize."),
+  targetDuration: z.number().min(6).max(45).optional().describe("Requested content duration before outro. Omit to let Auto Duration choose."),
+  outputName: z.string().min(1).optional(),
+  audioMode: audioModeSchema.default("silent"),
+  options: advancedOptionsSchema.optional(),
+};
 
 function textResult(value: unknown) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }],
-  };
+  return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] };
 }
 
 export function createReeloraMcpServer(): McpServer {
-  const server = new McpServer({
-    name: "reelora",
-    version: "0.1.0",
-  });
+  const server = new McpServer({ name: "reelora", version: "0.2.0" });
+
+  server.registerTool(
+    "reelora_features",
+    {
+      title: "List Reelora features",
+      description: "List the editing, preservation, vision, export, batch, and automation capabilities available in Reelora.",
+      inputSchema: {},
+    },
+    async () => textResult({ version: "0.2.0", count: REELORA_FEATURES.length, features: REELORA_FEATURES }),
+  );
 
   server.registerTool(
     "reelora_analyze",
     {
       title: "Analyze raw Reel videos",
-      description:
-        "Analyze raw product/fashion videos using FFmpeg scene detection and preservation-safe heuristics. Returns candidate clip windows without modifying the media.",
+      description: "Analyze raw videos, candidate windows, quality signals, and optional vision observations without modifying the footage.",
       inputSchema: {
-        rawVideos: z.array(z.string().min(1)).min(1).describe("Local file paths, file:// URLs, or HTTPS URLs for raw source videos."),
+        rawVideos: z.array(z.string().min(1)).min(1),
+        highlight: highlightSchema.optional(),
+        options: advancedOptionsSchema.optional(),
       },
     },
-    async ({ rawVideos }) => {
-      const result = await analyzeReeloraRequest({ rawVideos });
-      return textResult(result);
-    },
+    async ({ rawVideos, highlight, options }) => textResult(await analyzeReeloraRequest({ rawVideos, highlight, options })),
   );
 
   server.registerTool(
     "reelora_edit",
     {
       title: "Automatically edit a preservation-first Reel",
-      description:
-        "Turn uploaded/mounted raw videos plus an ending/outro video into a polished 9:16 Reel. Automatically selects, cuts, rearranges, reframes, crossfades, and exports while never generating or replacing the model, product, fabric, logo, print, or other visual content. For top_wear, the target shot distribution is 70% product-focus, 20% whole-body, 10% detail.",
+      description: "Take raw videos plus the uploaded ending video and do the editing automatically: choose the best moments, cut, rearrange, crop/reframe, track supplied product regions, apply clean animation/transitions/fades, append the outro, validate preservation, and export 9:16 MP4. No overlay text, overlay objects, generated model/product pixels, or AI voice-over.",
+      inputSchema: editInputSchema,
+    },
+    async (input) => textResult(await editReel(input)),
+  );
+
+  server.registerTool(
+    "reelora_variants",
+    {
+      title: "Generate A/B Reel variants",
+      description: "Create three preservation-safe versions from the same raw footage: premium, fast ecommerce, and luxury pacing.",
+      inputSchema: editInputSchema,
+    },
+    async (input) => textResult(await createEditVariants(input)),
+  );
+
+  server.registerTool(
+    "reelora_batch_edit",
+    {
+      title: "Batch edit multiple products",
+      description: "Process multiple independent Reel jobs sequentially, one finished Reel per product/job.",
       inputSchema: {
-        rawVideos: z.array(z.string().min(1)).min(1).describe("Raw source videos as local paths, file:// URLs, or HTTPS URLs."),
-        outroVideo: z.string().min(1).describe("Required ending/outro video. It is preserved and used as the final segment."),
-        music: z.string().min(1).optional().describe("Optional music/audio path or HTTPS URL. No generated voice-over is ever added."),
-        highlight: highlightSchema.default("general").describe("What the edit should visually prioritize."),
-        targetDuration: z.number().min(6).max(30).default(15).describe("Target duration in seconds before the outro."),
-        outputName: z.string().min(1).optional().describe("Optional MP4 output filename."),
-        audioMode: audioModeSchema.default("silent").describe("silent by default; music is automatically selected when a music file is supplied."),
+        jobs: z.array(z.object(editInputSchema)).min(1).max(25),
       },
     },
-    async ({ rawVideos, outroVideo, music, highlight, targetDuration, outputName, audioMode }) => {
-      const result = await editReel({
-        rawVideos,
-        outroVideo,
-        music,
-        highlight,
-        targetDuration,
-        outputName,
-        audioMode,
-      });
-      return textResult(result);
+    async ({ jobs }) => textResult(await batchEditReels(jobs)),
+  );
+
+  server.registerTool(
+    "reelora_save_brand_profile",
+    {
+      title: "Save a Reelora brand editing profile",
+      description: "Persist preferred style, platform, transition, preservation, export, and framing options for reuse.",
+      inputSchema: {
+        name: z.string().min(1),
+        options: advancedOptionsSchema,
+      },
     },
+    async ({ name, options }) => textResult(await saveBrandProfile(reeloraDataDir(), name, { ...options, noGenerativeMode: true })),
+  );
+
+  server.registerTool(
+    "reelora_list_brand_profiles",
+    {
+      title: "List saved Reelora brand profiles",
+      description: "Show persistent editing profiles saved in the Reelora runtime.",
+      inputSchema: {},
+    },
+    async () => textResult(await listBrandProfiles(reeloraDataDir())),
   );
 
   return server;
