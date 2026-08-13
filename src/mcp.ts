@@ -111,7 +111,7 @@ export function createReeloraMcpServer(): McpServer {
   server.registerTool("reelora_batch_edit", {
     title: "Batch edit multiple products", description: "Process multiple independent Reel jobs sequentially, one finished Reel per product/job.",
     inputSchema: { jobs: z.array(z.object(editInputSchema)).min(1).max(25) },
-  }, async ({ jobs }) => textResult(await batchEditReels(jobs.map((job) => ({ ...job, options: job.options as ReeloraAdvancedOptions | undefined }))));
+  }, async ({ jobs }) => textResult(await batchEditReels(jobs.map((job) => ({ ...job, options: job.options as ReeloraAdvancedOptions | undefined })))));
 
   server.registerTool("reelora_revise_plan", {
     title: "Apply structured revision commands to an edit plan",
