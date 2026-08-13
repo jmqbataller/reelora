@@ -4,6 +4,7 @@ import crypto from "node:crypto";
 import { probeMedia, runFfmpeg } from "./ffmpeg.js";
 import { resolveEncoder } from "./hardware.js";
 import { PLATFORM_PROFILES, STYLE_PROFILES } from "./profiles.js";
+import { premiumTransitionSpec } from "./transitions.js";
 import type { EditPlan, PlannedShot, RenderResult } from "./types.js";
 
 function quoteAudit(value: string): string {
@@ -101,14 +102,7 @@ async function renderOutro(plan: EditPlan, workDir: string, audit: string[]): Pr
   return { path: output, duration: info.duration };
 }
 
-function transitionSpec(transition: PlannedShot["transition"], baseDuration: number): { name: string; duration: number } {
-  if (transition === "cut") return { name: "fade", duration: 0.035 };
-  if (transition === "motion") return { name: "smoothleft", duration: Math.max(0.1, baseDuration) };
-  if (transition === "dissolve") return { name: "dissolve", duration: Math.max(0.12, baseDuration) };
-  return { name: "fade", duration: Math.max(0.1, baseDuration) };
-}
-
-function xfadeGraph(plan: EditPlan, durations: number[]): { graph: string; label: string } {
+function xfadeGraph(plan: EditPlan, durations: number[], audit: string[]): { graph: string; label: string } {
   if (durations.length === 1) return { graph: "", label: "0:v" };
   const filters: string[] = [];
   let previous = "0:v";
@@ -118,10 +112,11 @@ function xfadeGraph(plan: EditPlan, durations: number[]): { graph: string; label
   for (let i = 1; i < durations.length; i += 1) {
     const label = `v${i}`;
     const plannedTransition = i < plan.shots.length ? plan.shots[i].transition : "fade";
-    const spec = transitionSpec(plannedTransition, style.transitionDuration);
+    const spec = premiumTransitionSpec(plan, plannedTransition, i, style.transitionDuration);
     const duration = Math.min(spec.duration, Math.max(0.03, durations[i - 1] * 0.25), Math.max(0.03, durations[i] * 0.25));
     const offset = Math.max(0.01, timeline - duration);
     filters.push(`[${previous}][${i}:v]xfade=transition=${spec.name}:duration=${duration.toFixed(3)}:offset=${offset.toFixed(3)}[${label}]`);
+    audit.push(`transition ${i}: ${spec.label} (${spec.name}, ${duration.toFixed(3)}s)`);
     previous = label;
     timeline += durations[i] - duration;
   }
@@ -135,7 +130,7 @@ async function combineVideo(plan: EditPlan, parts: string[], durations: number[]
   }
   const encoder = resolveEncoder(plan.options.hardwareEncoder);
   const inputs = parts.flatMap((part) => ["-i", part]);
-  const { graph, label } = xfadeGraph(plan, durations);
+  const { graph, label } = xfadeGraph(plan, durations, audit);
   await runLogged(audit, [
     "-y",
     ...inputs,
@@ -177,7 +172,7 @@ async function addMusic(videoPath: string, musicPath: string, outputPath: string
     "-b:a",
     "192k",
     "-af",
-    `afade=t=in:st=0:d=0.3,afade=t=out:st=${fadeOutStart.toFixed(3)}:d=0.5`,
+    `loudnorm=I=-14:LRA=7:TP=-1.5,afade=t=in:st=0:d=0.3,afade=t=out:st=${fadeOutStart.toFixed(3)}:d=0.5`,
     "-t",
     info.duration.toFixed(3),
     "-movflags",
