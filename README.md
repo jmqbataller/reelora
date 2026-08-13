@@ -1,5 +1,7 @@
 # Reelora
 
+![Reelora CI](https://github.com/jmqbataller/reelora/actions/workflows/ci.yml/badge.svg)
+
 **Raw footage in. Quality Reel out.**
 
 Reelora is a preservation-first automatic video editor and MCP/ChatGPT skill adapter for product and fashion Reels.
