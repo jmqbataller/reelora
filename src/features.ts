@@ -1,7 +1,20 @@
 import type { HighlightIntent, ReeloraAdvancedOptions, ShotDistribution } from "./types.js";
 import { REELORA_CAPABILITY_CATALOG } from "./feature-catalog.js";
 
-export const REELORA_FEATURES = REELORA_CAPABILITY_CATALOG.map((feature) => feature.id);
+export const REELORA_FEATURES = [
+  ...REELORA_CAPABILITY_CATALOG.map((feature) => feature.id),
+  "automatic-premium-music-replacement",
+  "verified-music-rights-library",
+  "sample-free-reelora-original-beat",
+  "style-aware-music-bpm",
+  "beat-aware-shot-pacing",
+  "music-loudness-normalization",
+  "source-audio-replacement",
+  "premium-style-aware-transitions",
+  "luxury-transition-personality",
+  "fashion-transition-personality",
+  "cinematic-transition-personality",
+] as const;
 export type ReeloraFeature = string;
 
 export function defaultDistribution(highlight: HighlightIntent): ShotDistribution {
