@@ -30,11 +30,7 @@ function shotPattern(highlight: HighlightIntent): ShotType[] {
   return ["focus", "whole_body", "focus", "detail", "focus", "whole_body"];
 }
 
-function targetDurations(pattern: ShotType[], total: number, distribution: ReturnType<typeof distributionFor>, highlight: HighlightIntent): number[] {
-  if (highlight === "top_wear") {
-    return pattern.map(() => total / 10);
-  }
-
+function targetDurations(pattern: ShotType[], total: number, distribution: ReturnType<typeof distributionFor>): number[] {
   const counts = {
     focus: pattern.filter((x) => x === "focus").length,
     whole_body: pattern.filter((x) => x === "whole_body").length,
@@ -74,21 +70,35 @@ export function buildEditPlan(args: {
 
   const distribution = distributionFor(args.highlight);
   const pattern = shotPattern(args.highlight);
-  const durations = targetDurations(pattern, total, distribution, args.highlight);
+  const selected: Array<CandidateSegment & { shotType: ShotType }> = [];
   const used: CandidateSegment[] = [];
-  const shots: PlannedShot[] = [];
 
-  pattern.forEach((shotType, index) => {
+  for (const shotType of pattern) {
     const candidate = chooseCandidate(args.candidates, used);
-    if (!candidate) return;
+    if (!candidate) continue;
     used.push(candidate);
-    const targetDuration = durations[index];
-    shots.push({
-      ...candidate,
-      shotType,
-      targetDuration: Number(Math.min(targetDuration, candidate.duration).toFixed(3)),
-    });
-  });
+    selected.push({ ...candidate, shotType });
+  }
+
+  if (!selected.length) throw new Error("Unable to construct a non-empty edit plan.");
+
+  let shots: PlannedShot[];
+  if (args.highlight === "top_wear") {
+    const requestedSlot = total / 10;
+    // Never violate 70/20/10 just to hit a requested duration. If source windows are
+    // shorter, reduce every slot equally so the time distribution remains exact.
+    const slot = Math.min(requestedSlot, ...selected.map((shot) => shot.duration));
+    shots = selected.map((shot) => ({
+      ...shot,
+      targetDuration: Number(slot.toFixed(3)),
+    }));
+  } else {
+    const durations = targetDurations(pattern, total, distribution);
+    shots = selected.map((shot, index) => ({
+      ...shot,
+      targetDuration: Number(Math.min(durations[index] ?? shot.duration, shot.duration).toFixed(3)),
+    }));
+  }
 
   const plannedDuration = shots.reduce((sum, shot) => sum + shot.targetDuration, 0);
   if (plannedDuration <= 0) throw new Error("Unable to construct a non-empty edit plan.");
