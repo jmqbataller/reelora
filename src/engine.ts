@@ -6,6 +6,7 @@ import { assertFfmpegAvailable } from "./ffmpeg.js";
 import { materializeMedia, safeOutputName } from "./media.js";
 import { buildEditPlan } from "./planner.js";
 import { renderPlan } from "./render.js";
+import { validatePlan, validateRenderedOutput } from "./validation.js";
 import type { AudioMode, HighlightIntent } from "./types.js";
 
 export interface EditRequest {
@@ -77,10 +78,12 @@ export async function editReel(request: EditRequest) {
       targetContentDuration: request.targetDuration,
       audioMode: request.audioMode,
     });
+    validatePlan(plan);
 
     const outputName = safeOutputName(request.outputName ?? `reelora-${Date.now()}.mp4`);
     const outputPath = path.join(outputsDir, outputName);
     const render = await renderPlan(plan, outputPath, dataDir);
+    await validateRenderedOutput(outputPath);
 
     const publicBaseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, "");
     return {
