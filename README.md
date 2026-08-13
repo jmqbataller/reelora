@@ -4,138 +4,165 @@
 
 **Raw footage in. Quality Reel out.**
 
-Reelora is a preservation-first automatic video editor and MCP/ChatGPT skill adapter for product and fashion Reels.
+Reelora is a preservation-first automatic Reel director, FFmpeg renderer, MCP adapter, and installable ChatGPT Skill for product/fashion videos.
 
-Give it raw videos, an ending/outro video, and a short direction such as `Highlight the top wear`. Reelora builds the shot plan, finds candidate moments, cuts and rearranges footage, reframes it for 9:16, adds clean motion/crossfades, appends the outro, validates the result, and exports an MP4.
-
-## What is implemented in v0.1
-
-- FFmpeg/FFprobe media inspection
-- automatic scene-boundary detection
-- candidate clip generation and quality heuristics
-- automatic clip selection and rearrangement
-- highlight-aware shot planning
-- upper-body/top-wear reframing
-- whole-body context framing
-- tighter detail framing
-- subtle moving crop for visual motion
-- fade-in/fade-out
-- short crossfade transitions between shots
-- uploaded ending/outro as the final segment
-- optional supplied music with audio fade
-- no generated voice-over
-- 1080 × 1920 H.264 MP4 rendering
-- plan validation and final output validation
-- local MCP over stdio
-- remote MCP over Streamable HTTP
-- downloadable `/outputs/<file>.mp4` route for hosted deployments
-- local file paths, `file://` inputs, and HTTPS media inputs
-
-## Non-negotiable preservation rules
-
-Reelora never intentionally generates, replaces, redesigns, or outpaints visual content. It uses deterministic video transforms only.
-
-It must preserve the original:
-
-- model identity and face
-- skin tone and body proportions
-- garment/product
-- fabric and fabric texture
-- design, print, logo, tags, stitching
-- product color
-- neckline, sleeves, straps, length, fit, proportions
-
-Default prohibitions:
-
-- no overlay text
-- no captions or price text
-- no overlay objects/stickers/graphics
-- no generated backgrounds or props
-- no AI voice-over
-- no narration
-
-When visual enhancement conflicts with preservation, **preservation wins**.
-
-## Top-wear rule: exact 70 / 20 / 10
-
-When `highlight = top_wear`, Reelora creates ten equal-duration content slots:
-
-- **7 top-wear / upper-body focus shots = 70%**
-- **2 whole-body shots = 20%**
-- **1 product-detail shot = 10%**
-
-Total: **100%**.
-
-If the raw footage cannot safely support the requested total duration, Reelora reduces the content duration equally across all ten slots rather than breaking the 70/20/10 ratio.
-
-## Default Reel flow
+Upload raw clips + an ending/outro video and give a short instruction such as:
 
 ```text
-Raw videos + ending/outro
-        ↓
-FFprobe inspection
-        ↓
-Scene detection
-        ↓
-Candidate clip scoring
-        ↓
-Best-window selection
-        ↓
-Shot distribution plan
-        ↓
-9:16 smart crop / reframe
-        ↓
-Subtle motion + fades + crossfades
-        ↓
-Preservation validation
-        ↓
-Uploaded outro
-        ↓
-Optional supplied music
-        ↓
-1080 × 1920 MP4
+Make these into a quality Reel. Highlight the top wear.
 ```
 
-## Requirements
+Reelora handles clip selection, cutting, rearrangement, product-focused reframing, pacing, transitions, fade in/out, outro placement, validation, and export without generating or replacing the original model, product, or fabric.
 
-- Node.js 20+
-- FFmpeg + FFprobe available on `PATH`
+## Download the ChatGPT Skill
 
-Verify FFmpeg:
+**[Download Reelora Skill v0.2.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.2.0/reelora-skill-v0.2.0.zip)**
 
-```bash
-ffmpeg -version
-ffprobe -version
-```
+Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
-## Install
+The ZIP is built automatically from this repository and contains a top-level `reelora/` skill folder with `SKILL.md`, references, and a non-destructive runtime checker.
 
-```bash
-git clone https://github.com/jmqbataller/reelora.git
-cd reelora
-npm install
-npm run build
-```
+In eligible ChatGPT accounts/workspaces, Skills can be uploaded from the Skills area using **Create → Upload from your computer**. Uploaded Skills are scanned by ChatGPT before becoming available.
 
-## Local MCP / ChatGPT adapter
+## Non-negotiable preservation
 
-Run Reelora over stdio:
+Reelora automatic mode uses deterministic editing only. It must preserve the original:
 
-```bash
-npm run start:stdio
-```
+- model identity, face, skin tone, body proportions, hands, and natural movement
+- garment/product
+- fabric, texture, weave, ribbing, folds, shine, and thickness
+- product color
+- print, logo, tags, stitching
+- neckline, sleeves, straps, pockets, length, fit, and construction
 
-The server exposes:
+Hard prohibitions:
 
-### `reelora_analyze`
+- **no overlay text**
+- **no captions/price text**
+- **no overlay objects/stickers/graphics**
+- **no generated backgrounds/props**
+- **no AI voice-over or narration**
+- **no generative video replacement/outpainting**
 
-Analyzes raw videos and returns candidate clip windows.
+When style conflicts with preservation, preservation wins.
 
-### `reelora_edit`
+## Top-wear rule
 
-Automatically creates the finished Reel.
+Default for `Highlight the top wear`:
 
-Example tool arguments:
+- **70% top-wear / upper-body focus**
+- **20% whole body**
+- **10% product detail**
+
+Total = **100%**.
+
+If the user says something else, such as `80% top wear, 20% whole body`, Reelora normalizes and validates that requested distribution by timeline duration.
+
+## v0.2 highlights
+
+### Automatic direction
+
+- scene-boundary detection
+- candidate clip generation
+- best-moment scoring
+- hook-first ordering
+- duplicate avoidance
+- pose/variant diversity metadata
+- automatic duration
+- retention-focused shot ordering
+- batch editing
+- A/B style variants
+- versioned output files
+
+### Vision Director interface
+
+Reelora can consume structured frame observations from a vision-capable layer:
+
+- product crop region
+- face/full-body/hand regions
+- product visibility
+- blur
+- occlusion
+- front/side/back/walking/detail pose
+- variant identifier
+- confidence
+
+Those observations only guide selection/cropping of **existing source pixels**. They never regenerate the model or product.
+
+> The FFmpeg backend itself does not bundle a heavy computer-vision model. For fully semantic garment tracking, provide vision observations from the ChatGPT/vision layer or another trusted detector.
+
+### Product highlight targets
+
+`top_wear`, `pants`, `skirt`, `dress`, `shoes`, `bag`, `fabric`, `print`, `logo`, `neckline`, `sleeves`, `fit`, `front_back`, `general`.
+
+### Editing styles
+
+- premium
+- minimal
+- fashion
+- fast ecommerce
+- cinematic
+- luxury
+- clean commercial
+
+### Platform presets
+
+- Instagram Reels
+- TikTok
+- YouTube Shorts
+- Facebook Reels
+
+### Motion / transitions
+
+- clean cuts
+- fade in/out
+- short fades
+- dissolve
+- safe motion transition
+- subtle moving crop
+- high-FPS slow motion
+- product-focused vision crops
+
+### Integrity / quality
+
+- product color lock
+- fabric texture guard
+- logo/print lock
+- face/hand integrity guard
+- crop safety validation
+- strict no-generative lock
+- requested distribution validation
+- 1080×1920 validation
+- automatic conservative fallback re-edit
+- quality/confidence report
+- FFmpeg command audit
+
+### Export
+
+- H.264 MP4
+- auto thumbnail from a real video frame
+- social cover crop from a real video frame
+- edit-plan JSON
+- quality-report JSON
+- optional file-size target
+- CPU libx264
+- optional NVIDIA NVENC / Intel QSV / AMD AMF
+
+See [`docs/FEATURES.md`](./docs/FEATURES.md) for the expanded feature list.
+
+## MCP tools
+
+Reelora exposes:
+
+- `reelora_features`
+- `reelora_analyze`
+- `reelora_edit`
+- `reelora_variants`
+- `reelora_batch_edit`
+- `reelora_save_brand_profile`
+- `reelora_list_brand_profiles`
+
+## Example edit request
 
 ```json
 {
@@ -146,13 +173,58 @@ Example tool arguments:
   "outroVideo": "/absolute/path/outro.mp4",
   "highlight": "top_wear",
   "targetDuration": 15,
-  "outputName": "top-wear-reel.mp4"
+  "outputName": "top-wear-reel.mp4",
+  "options": {
+    "style": "premium",
+    "platform": "instagram_reels",
+    "dynamicSubjectTracking": true,
+    "autoThumbnail": true,
+    "coverCrop": true,
+    "qualityReport": true,
+    "noGenerativeMode": true
+  }
 }
 ```
 
-A supplied music file can also be passed with `music`. Reelora does not generate speech or voice-over.
+Custom distribution example:
 
-## Remote Streamable HTTP MCP
+```json
+{
+  "distribution": {
+    "focus": 0.8,
+    "wholeBody": 0.2,
+    "detail": 0
+  }
+}
+```
+
+## Requirements
+
+- Node.js 20+
+- FFmpeg + FFprobe on `PATH`
+
+```bash
+ffmpeg -version
+ffprobe -version
+```
+
+## Install backend
+
+```bash
+git clone https://github.com/jmqbataller/reelora.git
+cd reelora
+npm install
+npm run check
+npm run build
+```
+
+### Local stdio MCP
+
+```bash
+npm run start:stdio
+```
+
+### Streamable HTTP MCP
 
 ```bash
 npm run start
@@ -163,77 +235,64 @@ Endpoints:
 ```text
 POST /mcp
 GET  /health
-GET  /outputs/<generated-file>.mp4
+GET  /outputs/<generated-file>
 ```
 
-Useful environment variables:
+Environment:
 
 ```env
 PORT=3000
 REELORA_DATA_DIR=.reelora
 PUBLIC_BASE_URL=https://your-reelora-host.example
+# Optional GPU encoder: libx264 | h264_nvenc | h264_qsv | h264_amf
+REELORA_ENCODER=libx264
 ```
 
-When `PUBLIC_BASE_URL` is configured, `reelora_edit` returns an `outputUrl` for the generated Reel.
-
 ## Docker
-
-The included Dockerfile installs FFmpeg automatically.
 
 ```bash
 docker build -t reelora .
 docker run --rm -p 3000:3000 -v reelora-data:/data reelora
 ```
 
-## Input handling
+## Build the ChatGPT Skill ZIP locally
 
-The MCP tools currently accept:
-
-- absolute/local media paths available to the Reelora runtime
-- `file://` URLs
-- HTTPS media URLs
-
-For a ChatGPT environment that mounts uploaded attachments into the tool runtime, pass those mounted video paths to `reelora_edit`.
-
-## Current v0.1 limitations
-
-Reelora is now a working renderer, but the first release intentionally favors preservation and reliability over generative intelligence:
-
-- clip ranking currently uses scene, resolution, frame-rate, duration, and coverage heuristics rather than generative video editing;
-- top-wear reframing is preservation-safe upper-body framing and subtle crop movement, not body reconstruction;
-- supplied music is supported; original-source audio mixing across crossfades is not enabled yet;
-- remote servers need media to be accessible as runtime paths or HTTPS URLs.
-
-These limitations are intentional: Reelora should never invent fabric, alter a face, reconstruct a logo, or change the product just to make an edit look more dramatic.
-
-## Repository structure
-
-```text
-reelora/
-├── SKILL.md
-├── README.md
-├── package.json
-├── tsconfig.json
-├── Dockerfile
-├── .env.example
-├── src/
-│   ├── analyze.ts
-│   ├── engine.ts
-│   ├── ffmpeg.ts
-│   ├── http.ts
-│   ├── index.ts
-│   ├── mcp.ts
-│   ├── media.ts
-│   ├── planner.ts
-│   ├── render.ts
-│   ├── types.ts
-│   └── validation.ts
-├── docs/
-│   ├── EDITING_RULES.md
-│   ├── PRESERVATION.md
-│   └── SHOT_DISTRIBUTION.md
-└── examples/
-    └── TOP_WEAR_REEL.md
+```bash
+npm run pack:skill
 ```
 
-See [`SKILL.md`](./SKILL.md) for the full assistant behavior specification.
+Output:
+
+```text
+dist-skill/reelora-skill-v0.2.0.zip
+```
+
+The GitHub Release workflow also builds and uploads this ZIP automatically.
+
+## How the skill and backend work together
+
+```text
+User raw videos + ending video
+        ↓
+Reelora ChatGPT Skill
+        ↓
+Vision observations when available
+        ↓
+Reelora MCP / deterministic FFmpeg backend
+        ↓
+Scene + quality + visibility scoring
+        ↓
+Best clips / hook / shot distribution
+        ↓
+Safe crop + reframe + transitions + fades
+        ↓
+Preservation validation
+        ↓
+Uploaded outro
+        ↓
+MP4 + thumbnail + cover + edit plan + quality report
+```
+
+If the uploaded ChatGPT Skill does not have access to either the Reelora MCP backend or an FFmpeg-capable execution environment, it must create an edit plan and clearly report that it did **not** render an MP4 rather than pretending the render happened.
+
+See [`SKILL.md`](./SKILL.md) for the complete assistant behavior.
