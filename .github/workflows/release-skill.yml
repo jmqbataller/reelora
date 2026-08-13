@@ -1,0 +1,100 @@
+name: Reelora Skill Release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "package.json"
+      - "SKILL.md"
+      - "README.md"
+      - "docs/**"
+      - "skill/**"
+      - "scripts/build-skill-package.mjs"
+      - ".github/workflows/release-skill.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release-skill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+
+      - name: Type check backend
+        run: npm run check
+
+      - name: Build ChatGPT Skill ZIP
+        run: npm run pack:skill
+
+      - name: Verify ZIP structure
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
+          python3 - "$ZIP" <<'PY'
+          import sys, zipfile
+          archive = sys.argv[1]
+          with zipfile.ZipFile(archive) as z:
+              names = set(z.namelist())
+              required = {"reelora/SKILL.md", "reelora/manifest.json"}
+              missing = required - names
+              if missing:
+                  raise SystemExit(f"Missing required skill files: {sorted(missing)}")
+              print(f"Verified {archive} with {len(names)} files")
+          PY
+
+      - name: Create or update GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          TAG="v${VERSION}"
+          ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
+          cat > /tmp/reelora-release-notes.md <<EOF
+          # Reelora v${VERSION}
+
+          Preservation-first automatic Reel director and ChatGPT Skill.
+
+          ## Highlights
+          - raw videos + supplied ending/outro → automatic Reel workflow
+          - best-moment selection, cutting, rearrangement, safe crop/reframe
+          - Vision Director metadata interface and product-following crop support
+          - default top-wear distribution: 70% upper-body / 20% whole-body / 10% detail
+          - custom shot-percentage control
+          - premium, minimal, fashion, fast ecommerce, cinematic, luxury, and clean-commercial styles
+          - Instagram Reels, TikTok, YouTube Shorts, and Facebook Reels presets
+          - fade in/out, cuts, dissolves, safe motion transitions, high-FPS slow motion
+          - product color, fabric texture, logo/print, face, hand, and crop integrity guards
+          - A/B Reel variants, batch editing, saved brand profiles
+          - auto thumbnail, cover crop, edit-plan JSON, quality report, FFmpeg audit
+          - CPU H.264 plus optional NVIDIA NVENC, Intel QSV, and AMD AMF
+          - strict no-generative mode
+          - no overlay text, no overlay objects, no AI voice-over
+
+          Download **reelora-skill-v${VERSION}.zip** and upload it from ChatGPT's Skills interface when Skill uploads are available for your account/workspace.
+          EOF
+
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$ZIP" --clobber
+            gh release edit "$TAG" --title "Reelora v${VERSION}" --notes-file /tmp/reelora-release-notes.md
+          else
+            gh release create "$TAG" "$ZIP" \
+              --target "$GITHUB_SHA" \
+              --title "Reelora v${VERSION}" \
+              --notes-file /tmp/reelora-release-notes.md
+          fi
