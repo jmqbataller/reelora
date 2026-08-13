@@ -1,159 +1,217 @@
-# Reelora v0.2 Feature Set
+# Reelora Feature Catalog
 
-Reelora v0.2 is a preservation-first automatic Reel director. The feature set is designed around one rule: editing may change timing, framing, sequencing, transitions, and encoding, but it must not regenerate the model, product, or fabric.
+Reelora is a preservation-first automatic Reel director for product and fashion videos. This document is the product-level feature inventory for v0.3 and beyond.
 
-## Automatic direction
+Status meanings:
 
-- raw-video inspection
-- scene detection
-- candidate clip generation
-- best-moment scoring
-- automatic hook selection
-- automatic cut and rearrangement
-- auto duration
-- retention-focused ordering
-- duplicate-shot avoidance
-- pose variety
-- front/side/back balancing
-- variant balancing
-- single-model consistency metadata
+- **Implemented** — working in the current TypeScript/FFmpeg engine or MCP layer.
+- **Adapter-ready** — schema/contracts/hooks exist; a vision, desktop, audio-analysis, or platform adapter can supply the required observations or runtime behavior.
+- **Planned** — intentionally represented in the architecture but still needs a dedicated implementation.
 
-## Vision Director
+The machine-readable source of truth is `src/feature-catalog.ts` and is exposed through the `reelora_features` MCP tool.
 
-When frame observations are supplied by a vision-capable layer, Reelora supports:
+## Preservation baseline
 
-- product-region coordinates
-- face/full-body/hand regions
-- product visibility score
-- blur score
-- occlusion score
-- pose labels
-- variant labels
-- confidence score
-- preservation-safe crop targets
-- product-following crop motion
+Reelora never generates/replaces the model, face, product, fabric, logo, print, background, or missing pixels. No overlay text, overlay objects, or AI voice-over are added by default. Preservation always wins over enhancement.
 
-Vision data controls selection/cropping only. It never generates replacement pixels.
+## Vision and product understanding
 
-## Product targets
+- Reference product verification
+- Reference model lock
+- Garment segmentation hooks
+- Product coverage score
+- Logo/print visibility score
+- Fabric detail detector hooks
+- Product color delta guard
+- Face similarity guard
+- Body shape integrity guard
+- Hands-on-product detector
+- Pose moment detector
+- Front/side/back/walking/detail classification
+- Movement quality score
+- Micro-moment trimming
+- Best first-frame detector
+- Three-second hook optimizer
+- Shot fatigue detector
+- Background consistency score
+- Distraction detector
+- Mirror/reflection guard
+- Product obstruction guard
+- Safe crop heatmap
 
-- top wear
-- pants
-- skirt
-- dress
-- shoes
-- bag
-- fabric
-- print
-- logo
-- neckline
-- sleeves
-- fit
-- front/back
-- general product focus
+## Editing intelligence
 
-## Shot distribution
+- Scene detection and candidate generation
+- Best-moment selection
+- Duplicate-shot avoidance
+- Pose variety
+- Variant balancing
+- Dynamic product/subject tracking from vision regions
+- 70/20/10 top-wear default distribution
+- Custom percentage distributions
+- Visual rhythm engine
+- Motion direction matching hooks
+- Pose match cuts
+- Garment match cuts
+- Smart transition selection
+- Speed-ramp hooks
+- High-FPS slow motion
+- Optical-flow safety guard hooks
+- Cinematic freeze-frame mode
+- Real-frame parallax/pan concept
+- Retention-focused opening
+- Auto duration
+- Intro support hooks
+- Multiple supplied outro variants
+- Mandatory outro duration preservation
 
-Default `top_wear` rule:
+## Product integrity and QA
 
-- 70% focus / upper body
-- 20% whole body
-- 10% detail
+- No-generative mode lock
+- Product color lock
+- Fabric texture guard
+- Logo/print lock
+- Face integrity guard
+- Hand integrity guard
+- Body-shape integrity guard
+- Crop safety zones
+- Occlusion filtering
+- Blur filtering
+- Bad-pose filtering
+- Product/SKU lock hooks
+- Multi-product detection hooks
+- Before/after validation hooks
+- Pixel-preservation audit hooks
+- Generative-detection audit hooks
+- Quality threshold mode
+- Auto conservative re-edit fallback
+- Auto re-edit-until-pass architecture
+- Per-shot confidence
+- Rejection reasons
+- Overall Reel scorecard
 
-Custom distributions are normalized to 100% and validated by timeline duration.
+## Color, camera, and source normalization
 
-## Editing styles
+- Auto orientation
+- Mixed-resolution support
+- VFR/frame-rate normalization
+- Stabilization support
+- Rolling-shutter guard hooks
+- Exposure flicker correction hooks
+- White-balance consistency hooks
+- HDR/SDR safety hooks
+- Color-space detection hooks
+- Camera-shake classification hooks
 
-- premium
-- minimal
-- fashion
-- fast ecommerce
-- cinematic
-- luxury
-- clean commercial
+## Platform and export
 
-## Platform presets
-
-- Instagram Reels
-- TikTok
-- YouTube Shorts
-- Facebook Reels
-
-## Motion and transitions
-
-- clean cuts
-- fade in/out
-- short fades
-- dissolve
-- motion transition when safe
-- subtle moving crop
-- product-safe punch-in behavior
-- high-FPS slow motion
-- smart transition selection
+- Instagram Reels preset
+- TikTok preset
+- YouTube Shorts preset
+- Facebook Reels preset
+- Social UI crop safety
+- 1080x1920 H.264 MP4
+- Optional 60 fps output contract
+- Responsive reframe/export hooks for 4:5, 1:1, and 16:9
+- File-size targeting
+- Auto bitrate optimization hooks
+- Compression simulation hooks
+- Compression artifact guard hooks
+- Texture preservation scoring hooks
+- ProRes master export contract
+- Thumbnail generation
+- Cover crop generation
+- Edit plan JSON
+- Timeline JSON
+- Timeline CSV
+- CMX-style EDL timeline
+- FFmpeg audit
+- Versioned output files
 
 ## Audio
 
-- supplied music
-- clean audio fades
-- music trimming/looping to duration
-- beat-sync metadata support
-- music-energy/outro alignment flags
-- no AI voice-over
-- no synthetic narration
-- fail-safe handling for original audio when cross-source sync is uncertain
+- Supplied music support
+- No generated voice-over
+- Beat-sync contract
+- Music energy matching contract
+- Music drop detection contract
+- Music section selection contract
+- Outro beat alignment
+- Audio ducking hooks
+- Original/natural sound preservation hooks
+- Silence-aware cut hooks
+- Audio cleanup contract
+- Copyright-safe music warning behavior
 
-## Integrity guards
+## Reference Reel / style analysis
 
-- strict no-generative mode
-- product color lock
-- fabric texture guard
-- logo/print lock
-- face integrity guard
-- hand integrity guard
-- crop safety zones
-- real-frame-only crop validation
-- output dimension validation
-- requested shot-distribution validation
-- automatic conservative re-edit after failed advanced render
+Reelora may analyze metadata from a reference Reel to derive editing DNA such as average shot length, opening shot duration, shot distribution, transition frequency, motion intensity, and pacing/style profile.
 
-## Source handling
+Reelora must never copy the reference Reel's logos, text, music, brand assets, or generated visual content. It copies structure only.
 
-- portrait/landscape inputs
-- mixed resolutions
-- 720p/1080p/4K inputs
-- mixed source frame rates
-- file paths
-- `file://` URLs
-- HTTPS inputs
-- Windows-safe file URL handling
-- optional proxy-analysis architecture
+## Variant, SKU, and campaign workflows
 
-## Export
+- Variant-aware editing
+- Equal variant exposure hooks
+- Hero variant priority
+- Variant transition-match hooks
+- Multi-product detection hooks
+- SKU lock hooks
+- Batch campaign builder
+- Campaign consistency mode hooks
+- Auto naming by SKU/variant hooks
+- Brand preset versioning
+- Season/campaign preset metadata
+- Reusable editing DNA profiles
 
-- 1080x1920 H.264 MP4
-- CPU libx264
-- optional NVIDIA NVENC
-- optional Intel Quick Sync
-- optional AMD AMF
-- target file-size mode
-- versioned filenames
-- auto thumbnail from a real video frame
-- cover crop from a real video frame
-- edit-plan JSON
-- quality-report JSON
-- FFmpeg command audit
+## Revision workflow
 
-## Workflows
+- Lock shot
+- Unlock shot
+- Replace shot
+- Blacklist source moment
+- Favorite source moment
+- Edit only a requested output region
+- Alternative clip suggestions contract
+- Locked product shot contract
+- Approval lock
+- Client review mode contract
+- Version comparison / A-B variants
 
-- single automatic edit
-- A/B style variants
-- batch product editing
-- saved brand profiles
-- persistent profile reuse
-- downloadable hosted output routes
-- stdio MCP
-- Streamable HTTP MCP
+## Runtime, privacy, and reliability
 
-## Preservation prohibitions
+- Local FFmpeg processing
+- Privacy mode
+- Offline core editor contract
+- Auto-delete temporary raw cache
+- Local-vision adapter hooks
+- GPU vision adapter hooks
+- Proxy analysis/original master render
+- Hardware encoding: NVENC / QSV / AMF with CPU fallback
+- Skill/runtime diagnostics
+- Corrupt media detection
+- Codec compatibility hooks
+- Disk-space guard hooks
+- Estimated output size hooks
+- Crash recovery hooks
+- Render cache hooks
+- Partial render cache hooks
+- Watch-folder mode hooks
+- Queue mode hooks
 
-Reelora does not add overlay text, captions, price tags, stickers, decorative objects, generated backgrounds, generated product parts, or AI voice-over. Existing content inside the user-supplied outro is preserved as source media.
+## Desktop/application layer
+
+Planned desktop UX sits on top of the same Reelora engine rather than duplicating editing logic:
+
+- drag-and-drop raw videos + outro
+- one-click Windows packaging
+- queue dashboard
+- source/crop/final preview
+- interactive safe crop adjustment
+- timeline preview
+- revision history/undo
+- preset import/export
+
+## Feature discovery
+
+Call `reelora_features`. The response returns every capability with `implemented`, `adapter_ready`, or `planned` status so clients can distinguish current execution from future adapter work.
