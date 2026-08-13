@@ -1,0 +1,155 @@
+import type { FeatureCapability } from "./types.js";
+
+function cap(id: string, category: string, stage: FeatureCapability["stage"], description: string): FeatureCapability {
+  return { id, category, stage, description, preservationSafe: true };
+}
+
+export const REELORA_CAPABILITY_CATALOG: FeatureCapability[] = [
+  // Vision and understanding
+  cap("reference-product-verification", "vision", "adapter_ready", "Compare observed product regions against a supplied reference product before prioritizing shots."),
+  cap("reference-model-lock", "vision", "adapter_ready", "Use supplied identity/face observations to keep one intended model consistent."),
+  cap("garment-segmentation", "vision", "adapter_ready", "Accept precise garment masks/regions from a vision layer for safer crop and visibility scoring."),
+  cap("product-coverage-score", "vision", "implemented", "Score how much of the requested product is visible in a candidate shot."),
+  cap("logo-print-visibility-score", "vision", "adapter_ready", "Track whether logos and prints remain visible and unobstructed."),
+  cap("fabric-detail-detector", "vision", "adapter_ready", "Accept fabric-detail observations for texture, stitching, hem, ribbing, and stretch moments."),
+  cap("product-color-delta-guard", "qa", "adapter_ready", "Compare source and output product color observations and reject excessive drift."),
+  cap("face-similarity-guard", "qa", "adapter_ready", "Detect suspicious face drift or interpolation artifacts using external vision observations."),
+  cap("body-shape-integrity-guard", "qa", "adapter_ready", "Flag crops or processing that appear to distort body proportions."),
+  cap("hands-on-product-detector", "vision", "adapter_ready", "Identify product interaction moments such as touching, stretching, arranging, and smoothing."),
+  cap("pose-moment-detector", "vision", "adapter_ready", "Classify front, side, back, walking, detail, and transition moments."),
+  cap("automatic-angle-classification", "vision", "implemented", "Use pose observations to label front, side, back, walking, or detail footage."),
+  cap("movement-quality-score", "vision", "adapter_ready", "Prefer smooth, confident model movement over awkward starts/stops."),
+  cap("micro-moment-trimming", "editing", "planned", "Trim blinking, setup movement, camera settling, and garment adjustment moments."),
+  cap("best-first-frame-detector", "editing", "planned", "Choose a strong exact opening frame rather than only a strong opening clip."),
+  cap("three-second-hook-optimizer", "editing", "adapter_ready", "Bias the opening seconds toward higher product visibility and shot variety."),
+  cap("shot-fatigue-detector", "editing", "planned", "Avoid keeping the same framing or motion pattern for too long."),
+  cap("visual-rhythm-engine", "editing", "adapter_ready", "Use motion intensity and clip duration to control pacing in addition to music beats."),
+  cap("motion-direction-matching", "editing", "planned", "Match left/right/up/down movement direction between adjacent cuts."),
+  cap("pose-match-cut", "editing", "planned", "Match similar model poses across adjacent clips."),
+  cap("garment-match-cut", "editing", "planned", "Align product position across clips for cleaner garment continuity."),
+  cap("smart-speed-ramp-detection", "editing", "planned", "Apply speed ramps only around real motion peaks."),
+  cap("optical-flow-slow-motion-guard", "qa", "adapter_ready", "Permit interpolated slow motion only when face/product/fabric integrity remains safe."),
+  cap("cinematic-freeze-moment", "editing", "planned", "Use a freeze from a real source frame without generating new pixels."),
+  cap("real-frame-parallax", "editing", "planned", "Create limited crop/pan depth motion using only existing source pixels."),
+  cap("camera-shake-classification", "vision", "planned", "Differentiate intentional handheld motion from undesirable shake."),
+  cap("rolling-shutter-detection", "qa", "planned", "Detect wobble or skew from phone-camera rolling shutter."),
+  cap("exposure-flicker-correction", "render", "planned", "Reduce brightness pulsing while preserving product color."),
+  cap("white-balance-consistency", "render", "adapter_ready", "Match clips conservatively without recoloring the garment."),
+  cap("background-consistency-score", "vision", "planned", "Prefer clean consistent backgrounds when product quality is otherwise equal."),
+  cap("distraction-detector", "vision", "adapter_ready", "Lower priority for clutter, random people, reflections, or distracting movement."),
+  cap("mirror-reflection-guard", "qa", "adapter_ready", "Flag mirrors/reflections that expose crew, camera, or misleading product views."),
+  cap("product-obstruction-guard", "qa", "implemented", "Use occlusion scores to reject clips where important product areas are blocked."),
+  cap("safe-crop-heatmap", "vision", "adapter_ready", "Represent safe and unsafe crop areas from supplied product/face/hand regions."),
+
+  // Framing/platform/export
+  cap("platform-ui-safe-areas", "platform", "implemented", "Keep important subjects away from common social UI edge zones."),
+  cap("responsive-reframe-presets", "export", "planned", "Generate 9:16, 4:5, 1:1, and 16:9 derivatives from one edit plan."),
+  cap("platform-compression-simulation", "qa", "planned", "Estimate how social compression may affect fine fabric texture."),
+  cap("compression-artifact-guard", "qa", "adapter_ready", "Check for blockiness/banding after export."),
+  cap("texture-preservation-score", "qa", "adapter_ready", "Compare local source/output detail to protect knit/ribbed fabric."),
+  cap("auto-bitrate-optimizer", "export", "adapter_ready", "Choose bitrate from motion/texture complexity and optional file-size target."),
+  cap("hdr-sdr-safety", "render", "adapter_ready", "Handle phone HDR sources conservatively when producing SDR social output."),
+  cap("color-space-detection", "render", "adapter_ready", "Track color-space metadata to reduce accidental color shifts."),
+  cap("60fps-reel-mode", "export", "adapter_ready", "Allow optional 60 fps output when sources and platform needs justify it."),
+  cap("prores-master-export", "export", "planned", "Create an optional edit master for professional post-production."),
+  cap("transparent-edit-manifest", "export", "implemented", "Export source timestamps, crops, transitions, filters, and selected shot metadata."),
+  cap("timeline-json-export", "export", "implemented", "Export a machine-readable timeline from the edit plan."),
+  cap("timeline-csv-export", "export", "implemented", "Export a spreadsheet-friendly timeline."),
+  cap("timeline-edl-export", "export", "implemented", "Export a basic CMX-style EDL for handoff to NLE workflows."),
+  cap("project-file-mode", "export", "adapter_ready", "Treat Reelora as a first-cut generator for later human refinement."),
+
+  // Revision controls
+  cap("shot-replacement-command", "revision", "adapter_ready", "Replace one planned shot without redefining the entire creative brief."),
+  cap("lock-shot-command", "revision", "adapter_ready", "Mark approved shots as locked for future revisions."),
+  cap("edit-region-command", "revision", "adapter_ready", "Limit a revision to a selected output time range."),
+  cap("alternative-clip-suggestions", "revision", "planned", "Return candidate replacements for a selected shot."),
+  cap("manual-favorite-marking", "revision", "adapter_ready", "Prefer a user-specified source window during planning."),
+  cap("blacklist-moment", "revision", "adapter_ready", "Never use a specified source time window."),
+  cap("locked-product-shot", "revision", "adapter_ready", "Guarantee a selected product shot is retained when safe."),
+  cap("mandatory-outro-length", "editing", "adapter_ready", "Preserve the supplied ending duration exactly when requested."),
+  cap("intro-video-support", "editing", "adapter_ready", "Allow a supplied intro before the automatically generated product edit."),
+  cap("multiple-outro-variants", "editing", "adapter_ready", "Choose from user-supplied outros by platform or campaign."),
+
+  // Variant, SKU, campaign
+  cap("variant-aware-editing", "campaign", "implemented", "Use variant labels from vision observations to balance product colors/styles."),
+  cap("equal-variant-exposure", "campaign", "adapter_ready", "Target balanced screen time across detected variants."),
+  cap("hero-variant-priority", "campaign", "adapter_ready", "Prioritize one requested variant while still showing supporting variants."),
+  cap("variant-transition-match", "campaign", "planned", "Match pose/framing while transitioning between product variants."),
+  cap("multi-product-detection", "qa", "adapter_ready", "Identify when multiple products/SKUs appear in one source set."),
+  cap("sku-lock", "qa", "adapter_ready", "Restrict selected footage to the intended SKU when observations are supplied."),
+  cap("batch-campaign-builder", "campaign", "implemented", "Process multiple independent product jobs in sequence."),
+  cap("campaign-consistency-mode", "campaign", "adapter_ready", "Reuse editing DNA and style while preserving shot-level variation."),
+  cap("auto-file-naming-by-sku", "campaign", "adapter_ready", "Generate predictable output names using product/variant metadata."),
+  cap("brand-preset-versioning", "profile", "implemented", "Save reusable editing profiles by explicit names/versions."),
+  cap("season-campaign-presets", "profile", "adapter_ready", "Allow campaign metadata such as launch, payday, holiday, or new arrival without forcing overlays."),
+  cap("reusable-editing-dna", "profile", "adapter_ready", "Represent pacing, shot length, framing mix, and transition intensity as reusable profile data."),
+  cap("reference-reel-style-matching", "style", "adapter_ready", "Apply supplied pacing/framing/transition observations without copying protected creative assets."),
+  cap("no-content-copying-mode", "style", "implemented", "Style matching must never copy logos, text, assets, or generated visual content from reference reels."),
+  cap("competitor-reel-analyzer", "style", "adapter_ready", "Analyze hook length, pacing, shot types, and transition patterns as metadata only."),
+
+  // QA and validation loop
+  cap("quality-threshold-mode", "qa", "implemented", "Expose a minimum confidence/quality threshold for final validation."),
+  cap("auto-reedit-until-pass", "qa", "adapter_ready", "Allow repeated conservative re-planning until quality constraints pass or safe alternatives are exhausted."),
+  cap("reason-for-rejection-report", "qa", "implemented", "Return warnings/check details explaining why footage or output failed validation."),
+  cap("confidence-per-shot", "qa", "implemented", "Attach confidence and visibility metadata to planned shots when available."),
+  cap("overall-reel-scorecard", "qa", "implemented", "Return a quality score, confidence, distribution, checks, and warnings."),
+  cap("before-after-frame-diff", "qa", "adapter_ready", "Support source/output frame comparison for preservation review."),
+  cap("pixel-preservation-audit", "qa", "adapter_ready", "Verify the pipeline only transforms original source pixels rather than synthesizing replacements."),
+  cap("generative-detection-audit", "qa", "adapter_ready", "Record that automatic Reelora rendering never invokes a generative video replacement stage."),
+
+  // Privacy/performance/reliability
+  cap("privacy-mode", "runtime", "implemented", "Support local processing and avoid required cloud inference in the deterministic renderer."),
+  cap("auto-delete-raw-cache", "runtime", "implemented", "Clean temporary materialized inputs after a job completes."),
+  cap("offline-mode", "runtime", "adapter_ready", "Permit core FFmpeg editing without internet when all media is local."),
+  cap("local-vision-model-hooks", "runtime", "adapter_ready", "Provide observation interfaces compatible with local OpenCV/MediaPipe/YOLO-style vision adapters."),
+  cap("gpu-vision-acceleration-hooks", "runtime", "planned", "Reserve runtime hooks for GPU-accelerated local vision providers."),
+  cap("proxy-analysis-original-render", "runtime", "implemented", "Support proxy-oriented analysis flags while retaining original media for rendering."),
+  cap("watch-folder-mode", "runtime", "adapter_ready", "Define a watch-folder option for future desktop/daemon workflows."),
+  cap("desktop-app", "desktop", "planned", "Drag-and-drop desktop interface around the same deterministic Reelora engine."),
+  cap("one-click-windows-build", "desktop", "planned", "Package Reelora for users who do not want terminal setup."),
+  cap("queue-dashboard", "desktop", "adapter_ready", "Expose job state concepts for pending, analyzing, rendering, validating, and complete."),
+  cap("side-by-side-preview", "desktop", "planned", "Preview source, crop, and rendered result together."),
+  cap("interactive-crop-preview", "desktop", "planned", "Allow manual safe crop nudging before final render."),
+  cap("timeline-preview", "desktop", "adapter_ready", "Use exported timeline metadata to display the selected sequence."),
+  cap("undo-edit-history", "revision", "planned", "Persist revision history for interactive desktop/client workflows."),
+  cap("preset-sharing", "profile", "planned", "Export/import Reelora profile bundles."),
+  cap("skill-self-diagnostics", "runtime", "implemented", "Inspect FFmpeg/FFprobe and known encoder availability."),
+  cap("automatic-encoder-fallback", "runtime", "implemented", "Fall back to CPU H.264 when requested hardware encoding is unavailable."),
+  cap("crash-recovery", "runtime", "adapter_ready", "Represent resumable job stages for future durable execution."),
+  cap("render-cache", "runtime", "adapter_ready", "Reserve cache controls so unchanged clips can avoid repeated rendering."),
+  cap("partial-render-cache", "runtime", "adapter_ready", "Reserve per-shot cache controls for selective revisions."),
+  cap("disk-space-guard", "runtime", "adapter_ready", "Check free space before long renders in future desktop/server adapters."),
+  cap("estimated-output-size", "runtime", "adapter_ready", "Use target bitrate/duration metadata to estimate final file size."),
+  cap("corrupt-video-detection", "runtime", "implemented", "Reject unreadable/no-video-stream files during probing."),
+  cap("codec-compatibility-check", "runtime", "adapter_ready", "Expose codec compatibility checks for deployment/desktop adapters."),
+  cap("phone-rotation-fix", "runtime", "implemented", "Normalize phone orientation through render-time scaling/cropping behavior."),
+  cap("variable-frame-rate-normalization", "runtime", "implemented", "Normalize output frame rate for mixed/VFR source footage."),
+
+  // Audio
+  cap("audio-beat-map-export", "audio", "adapter_ready", "Reserve structured beat-map data for advanced music-driven editing."),
+  cap("music-drop-detector", "audio", "adapter_ready", "Use supplied beat/drop metadata to strengthen transitions and outro landing."),
+  cap("music-section-selector", "audio", "adapter_ready", "Choose a supplied music section that best matches requested Reel duration."),
+  cap("copyright-safe-music-warning", "audio", "implemented", "Treat music as user-supplied media and avoid claiming licensing rights."),
+  cap("natural-sound-highlighting", "audio", "adapter_ready", "Preserve useful fabric swish/stretch/footstep/product sounds when requested."),
+  cap("audio-cleanup", "audio", "planned", "Reserve denoise/cleanup controls without generated speech."),
+  cap("music-to-outro-landing", "audio", "adapter_ready", "Align final supplied music beats with the supplied outro when beat metadata exists."),
+  cap("silence-aware-cut", "audio", "adapter_ready", "Avoid awkward cuts through useful original audio when original/mix modes are enabled."),
+
+  // Client/review workflow
+  cap("client-review-mode", "review", "adapter_ready", "Create review-oriented metadata and preview workflow hooks."),
+  cap("approval-lock", "review", "adapter_ready", "Mark approved shots to protect them from later automated revisions."),
+  cap("revision-commands", "review", "adapter_ready", "Support structured commands such as less zoom, more whole body, or faster opening."),
+  cap("version-comparison", "review", "implemented", "Create A/B variants and compare outputs/quality metadata."),
+];
+
+export function capabilitySummary() {
+  const byStage = REELORA_CAPABILITY_CATALOG.reduce<Record<string, number>>((acc, item) => {
+    acc[item.stage] = (acc[item.stage] ?? 0) + 1;
+    return acc;
+  }, {});
+  return {
+    count: REELORA_CAPABILITY_CATALOG.length,
+    byStage,
+    categories: [...new Set(REELORA_CAPABILITY_CATALOG.map((item) => item.category))].sort(),
+  };
+}
