@@ -5,6 +5,7 @@ import { analyzeSources } from "./analyze.js";
 import { assertFfmpegAvailable } from "./ffmpeg.js";
 import { REELORA_FEATURES, assertPreservationMode } from "./features.js";
 import { materializeMedia, safeOutputName } from "./media.js";
+import { resolveMusicForEdit } from "./music.js";
 import { buildEditPlan } from "./planner.js";
 import { buildQualityReport } from "./quality.js";
 import { renderPlan } from "./render.js";
@@ -143,7 +144,14 @@ export async function editReel(request: EditRequest) {
       rawPaths.push(await materializeMedia(request.rawVideos[i], inputDir, `raw-${i + 1}`));
     }
     const outroPath = await materializeMedia(request.outroVideo, inputDir, "outro");
-    const musicPath = request.music ? await materializeMedia(request.music, inputDir, "music") : undefined;
+    const suppliedMusicPath = request.music ? await materializeMedia(request.music, inputDir, "music") : undefined;
+    const musicSelection = await resolveMusicForEdit({
+      suppliedMusicPath,
+      workDir: inputDir,
+      style: options.style ?? "premium",
+      autoMusic: true,
+    });
+    const musicPath = musicSelection?.path;
 
     const analysis = await analyzeSources(rawPaths);
     const candidates = enrichCandidatesWithVision(analysis.candidates, options.visionObservations, request.highlight);
@@ -151,6 +159,7 @@ export async function editReel(request: EditRequest) {
       candidates,
       outroPath,
       musicPath,
+      musicBpm: musicSelection?.bpm,
       highlight: request.highlight,
       targetContentDuration: request.targetDuration,
       audioMode: request.audioMode,
@@ -182,6 +191,16 @@ export async function editReel(request: EditRequest) {
       editPlanPath,
       timelinePaths,
       qualityReport,
+      music: musicSelection ? {
+        id: musicSelection.id,
+        title: musicSelection.title,
+        bpm: musicSelection.bpm,
+        energy: musicSelection.energy,
+        mood: musicSelection.mood,
+        source: musicSelection.source,
+        rights: musicSelection.rights,
+        replacedSourceAudio: true,
+      } : undefined,
       outputName: output.outputName,
       outputUrl: publicUrl(output.outputPath),
       thumbnailUrl: publicUrl(rendered.render.thumbnailPath),
@@ -197,6 +216,7 @@ export async function editReel(request: EditRequest) {
         distribution: rendered.plan.distribution,
         style: rendered.plan.options.style,
         platform: rendered.plan.options.platform,
+        musicBpm: musicSelection?.bpm,
         shots: rendered.plan.shots.map((shot) => ({
           sourceIndex: shot.sourceIndex,
           start: shot.start,
