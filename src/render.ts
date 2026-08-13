@@ -1,51 +1,73 @@
-import { mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdir, rename, rm } from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import { probeMedia, runFfmpeg } from "./ffmpeg.js";
+import { resolveEncoder } from "./hardware.js";
+import { PLATFORM_PROFILES, STYLE_PROFILES } from "./profiles.js";
 import type { EditPlan, PlannedShot, RenderResult } from "./types.js";
 
-const WIDTH = 1080;
-const HEIGHT = 1920;
-const FPS = 30;
-const XFADE = 0.18;
+function quoteAudit(value: string): string {
+  return /\s/.test(value) ? JSON.stringify(value) : value;
+}
 
-function shotFilter(shot: PlannedShot, index: number, total: number): string {
-  const fadeIn = index === 0 ? `,fade=t=in:st=0:d=0.22` : "";
-  const fadeOut = index === total - 1 && shot.targetDuration > 0.3
-    ? `,fade=t=out:st=${Math.max(0, shot.targetDuration - 0.22).toFixed(3)}:d=0.22`
+async function runLogged(audit: string[], args: string[]): Promise<void> {
+  audit.push(`ffmpeg ${args.map(quoteAudit).join(" ")}`);
+  await runFfmpeg(args);
+}
+
+function normalizedCropPrefix(shot: PlannedShot): string {
+  if (!shot.cropRegion || shot.shotType === "whole_body") return "";
+  const region = shot.cropRegion;
+  return `crop=w='iw*${region.width.toFixed(5)}':h='ih*${region.height.toFixed(5)}':x='iw*${region.x.toFixed(5)}':y='ih*${region.y.toFixed(5)}',`;
+}
+
+function shotFilter(plan: EditPlan, shot: PlannedShot, index: number, total: number): string {
+  const platform = PLATFORM_PROFILES[plan.options.platform];
+  const style = STYLE_PROFILES[plan.options.style];
+  const width = platform.width;
+  const height = platform.height;
+  const fps = platform.fps;
+  const motion = plan.options.dynamicSubjectTracking ? style.motionAmount : 0;
+  const fadeIn = index === 0 ? `,fade=t=in:st=0:d=${style.openingFade}` : "";
+  const fadeOut = index === total - 1 && shot.targetDuration > style.endingFade
+    ? `,fade=t=out:st=${Math.max(0, shot.targetDuration - style.endingFade).toFixed(3)}:d=${style.endingFade}`
     : "";
+  const speed = shot.playbackRate && shot.playbackRate !== 1 ? `,setpts=PTS/${shot.playbackRate.toFixed(3)}` : "";
+  const cropPrefix = normalizedCropPrefix(shot);
 
   if (shot.shotType === "whole_body") {
-    return `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}:x='max(0\\,min(iw-${WIDTH}\\,(iw-${WIDTH})/2+sin(t*0.65)*8))':y='max(0\\,min(ih-${HEIGHT}\\,(ih-${HEIGHT})/2))',fps=${FPS}${fadeIn}${fadeOut}`;
+    return `${cropPrefix}scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.65)*${motion}))':y='max(0\\,min(ih-${height}\\,(ih-${height})/2))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
+  }
+
+  if (shot.cropRegion) {
+    return `${cropPrefix}scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.7)*${motion}))':y='max(0\\,min(ih-${height}\\,(ih-${height})/2))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
   }
 
   if (shot.shotType === "detail") {
-    return `scale=1240:2205:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}:x='max(0\\,min(iw-${WIDTH}\\,(iw-${WIDTH})/2+sin(t*0.75)*10))':y='max(0\\,min(ih-${HEIGHT}\\,(ih-${HEIGHT})*0.16))',fps=${FPS}${fadeIn}${fadeOut}`;
+    return `scale=${Math.round(width * 1.15)}:${Math.round(height * 1.15)}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.75)*${motion + 2}))':y='max(0\\,min(ih-${height}\\,(ih-${height})*0.16))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
   }
 
-  // Product-focus crop: deliberately upper-biased for top-wear while retaining real source pixels only.
-  return `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=increase,crop=${WIDTH}:${HEIGHT}:x='max(0\\,min(iw-${WIDTH}\\,(iw-${WIDTH})/2+sin(t*0.7)*10))':y='max(0\\,min(ih-${HEIGHT}\\,(ih-${HEIGHT})*0.18))',fps=${FPS}${fadeIn}${fadeOut}`;
+  return `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.7)*${motion + 2}))':y='max(0\\,min(ih-${height}\\,(ih-${height})*0.18))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
 }
 
-async function renderShot(shot: PlannedShot, index: number, total: number, workDir: string): Promise<string> {
+async function renderShot(plan: EditPlan, shot: PlannedShot, index: number, total: number, workDir: string, audit: string[]): Promise<string> {
   const output = path.join(workDir, `shot-${String(index).padStart(2, "0")}.mp4`);
-  await runFfmpeg([
+  const encoder = resolveEncoder(plan.options.hardwareEncoder);
+  const sourceDuration = Math.min(shot.duration, shot.targetDuration * (shot.playbackRate ?? 1));
+  await runLogged(audit, [
     "-y",
     "-ss",
     shot.start.toFixed(3),
     "-t",
-    shot.targetDuration.toFixed(3),
+    sourceDuration.toFixed(3),
     "-i",
     shot.sourcePath,
     "-vf",
-    shotFilter(shot, index, total),
+    shotFilter(plan, shot, index, total),
     "-an",
     "-c:v",
-    "libx264",
-    "-preset",
-    "medium",
-    "-crf",
-    "18",
+    encoder.codec,
+    ...encoder.args,
     "-pix_fmt",
     "yuv420p",
     "-movflags",
@@ -55,22 +77,21 @@ async function renderShot(shot: PlannedShot, index: number, total: number, workD
   return output;
 }
 
-async function renderOutro(outroPath: string, workDir: string): Promise<{ path: string; duration: number }> {
-  const info = await probeMedia(outroPath);
+async function renderOutro(plan: EditPlan, workDir: string, audit: string[]): Promise<{ path: string; duration: number }> {
+  const platform = PLATFORM_PROFILES[plan.options.platform];
+  const info = await probeMedia(plan.outroPath);
   const output = path.join(workDir, "outro.mp4");
-  await runFfmpeg([
+  const encoder = resolveEncoder(plan.options.hardwareEncoder);
+  await runLogged(audit, [
     "-y",
     "-i",
-    outroPath,
+    plan.outroPath,
     "-vf",
-    `scale=${WIDTH}:${HEIGHT}:force_original_aspect_ratio=decrease,pad=${WIDTH}:${HEIGHT}:(ow-iw)/2:(oh-ih)/2:black,fps=${FPS}`,
+    `scale=${platform.width}:${platform.height}:force_original_aspect_ratio=decrease,pad=${platform.width}:${platform.height}:(ow-iw)/2:(oh-ih)/2:black,fps=${platform.fps}`,
     "-an",
     "-c:v",
-    "libx264",
-    "-preset",
-    "medium",
-    "-crf",
-    "18",
+    encoder.codec,
+    ...encoder.args,
     "-pix_fmt",
     "yuv420p",
     "-movflags",
@@ -80,33 +101,42 @@ async function renderOutro(outroPath: string, workDir: string): Promise<{ path: 
   return { path: output, duration: info.duration };
 }
 
-function xfadeGraph(durations: number[]): { graph: string; label: string } {
-  if (durations.length === 1) return { graph: "", label: "0:v" };
+function transitionSpec(transition: PlannedShot["transition"], baseDuration: number): { name: string; duration: number } {
+  if (transition === "cut") return { name: "fade", duration: 0.035 };
+  if (transition === "motion") return { name: "smoothleft", duration: Math.max(0.1, baseDuration) };
+  if (transition === "dissolve") return { name: "dissolve", duration: Math.max(0.12, baseDuration) };
+  return { name: "fade", duration: Math.max(0.1, baseDuration) };
+}
 
+function xfadeGraph(plan: EditPlan, durations: number[]): { graph: string; label: string } {
+  if (durations.length === 1) return { graph: "", label: "0:v" };
   const filters: string[] = [];
   let previous = "0:v";
   let timeline = durations[0];
+  const style = STYLE_PROFILES[plan.options.style];
 
   for (let i = 1; i < durations.length; i += 1) {
     const label = `v${i}`;
-    const offset = Math.max(0.01, timeline - XFADE * i);
-    filters.push(`[${previous}][${i}:v]xfade=transition=fade:duration=${XFADE}:offset=${offset.toFixed(3)}[${label}]`);
+    const plannedTransition = i < plan.shots.length ? plan.shots[i].transition : "fade";
+    const spec = transitionSpec(plannedTransition, style.transitionDuration);
+    const duration = Math.min(spec.duration, Math.max(0.03, durations[i - 1] * 0.25), Math.max(0.03, durations[i] * 0.25));
+    const offset = Math.max(0.01, timeline - duration);
+    filters.push(`[${previous}][${i}:v]xfade=transition=${spec.name}:duration=${duration.toFixed(3)}:offset=${offset.toFixed(3)}[${label}]`);
     previous = label;
-    timeline += durations[i];
+    timeline += durations[i] - duration;
   }
-
   return { graph: filters.join(";"), label: previous };
 }
 
-async function combineVideo(parts: string[], durations: number[], output: string): Promise<void> {
+async function combineVideo(plan: EditPlan, parts: string[], durations: number[], output: string, audit: string[]): Promise<void> {
   if (parts.length === 1) {
-    await runFfmpeg(["-y", "-i", parts[0], "-c", "copy", output]);
+    await runLogged(audit, ["-y", "-i", parts[0], "-c", "copy", output]);
     return;
   }
-
+  const encoder = resolveEncoder(plan.options.hardwareEncoder);
   const inputs = parts.flatMap((part) => ["-i", part]);
-  const { graph, label } = xfadeGraph(durations);
-  await runFfmpeg([
+  const { graph, label } = xfadeGraph(plan, durations);
+  await runLogged(audit, [
     "-y",
     ...inputs,
     "-filter_complex",
@@ -115,11 +145,8 @@ async function combineVideo(parts: string[], durations: number[], output: string
     `[${label}]`,
     "-an",
     "-c:v",
-    "libx264",
-    "-preset",
-    "medium",
-    "-crf",
-    "18",
+    encoder.codec,
+    ...encoder.args,
     "-pix_fmt",
     "yuv420p",
     "-movflags",
@@ -128,10 +155,10 @@ async function combineVideo(parts: string[], durations: number[], output: string
   ]);
 }
 
-async function addMusic(videoPath: string, musicPath: string, outputPath: string): Promise<void> {
+async function addMusic(videoPath: string, musicPath: string, outputPath: string, audit: string[]): Promise<void> {
   const info = await probeMedia(videoPath);
   const fadeOutStart = Math.max(0, info.duration - 0.55);
-  await runFfmpeg([
+  await runLogged(audit, [
     "-y",
     "-i",
     videoPath,
@@ -159,8 +186,68 @@ async function addMusic(videoPath: string, musicPath: string, outputPath: string
   ]);
 }
 
+async function targetFileSize(outputPath: string, targetMb: number, audit: string[]): Promise<void> {
+  if (!Number.isFinite(targetMb) || targetMb <= 1) return;
+  const info = await probeMedia(outputPath);
+  const videoKbps = Math.max(1200, Math.min(16000, Math.floor((targetMb * 8192) / Math.max(1, info.duration) - 192)));
+  const temp = `${outputPath}.size-target.mp4`;
+  await runLogged(audit, [
+    "-y",
+    "-i",
+    outputPath,
+    "-c:v",
+    "libx264",
+    "-preset",
+    "medium",
+    "-b:v",
+    `${videoKbps}k`,
+    "-maxrate",
+    `${Math.round(videoKbps * 1.15)}k`,
+    "-bufsize",
+    `${Math.round(videoKbps * 2)}k`,
+    "-c:a",
+    "aac",
+    "-b:a",
+    "160k",
+    "-pix_fmt",
+    "yuv420p",
+    "-movflags",
+    "+faststart",
+    temp,
+  ]);
+  await rename(temp, outputPath);
+}
+
+async function generateThumbnail(outputPath: string, audit: string[]): Promise<string> {
+  const info = await probeMedia(outputPath);
+  const thumbnailPath = outputPath.replace(/\.mp4$/i, ".thumbnail.jpg");
+  await runLogged(audit, ["-y", "-ss", Math.min(1.2, info.duration * 0.18).toFixed(3), "-i", outputPath, "-frames:v", "1", "-q:v", "2", thumbnailPath]);
+  return thumbnailPath;
+}
+
+async function generateCover(outputPath: string, audit: string[]): Promise<string> {
+  const info = await probeMedia(outputPath);
+  const coverPath = outputPath.replace(/\.mp4$/i, ".cover.jpg");
+  await runLogged(audit, [
+    "-y",
+    "-ss",
+    Math.min(1.2, info.duration * 0.18).toFixed(3),
+    "-i",
+    outputPath,
+    "-vf",
+    "scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1350:0:285",
+    "-frames:v",
+    "1",
+    "-q:v",
+    "2",
+    coverPath,
+  ]);
+  return coverPath;
+}
+
 export async function renderPlan(plan: EditPlan, outputPath: string, dataDir: string): Promise<RenderResult> {
   const warnings: string[] = [];
+  const audit: string[] = [];
   const workDir = path.join(dataDir, "jobs", crypto.randomUUID());
   await mkdir(workDir, { recursive: true });
   await mkdir(path.dirname(outputPath), { recursive: true });
@@ -168,30 +255,37 @@ export async function renderPlan(plan: EditPlan, outputPath: string, dataDir: st
   try {
     const renderedShots: string[] = [];
     for (let i = 0; i < plan.shots.length; i += 1) {
-      renderedShots.push(await renderShot(plan.shots[i], i, plan.shots.length, workDir));
+      renderedShots.push(await renderShot(plan, plan.shots[i], i, plan.shots.length, workDir, audit));
     }
 
-    const outro = await renderOutro(plan.outroPath, workDir);
+    const outro = await renderOutro(plan, workDir, audit);
     const parts = [...renderedShots, outro.path];
     const durations = [...plan.shots.map((shot) => shot.targetDuration), outro.duration];
     const silentCombined = path.join(workDir, "combined-silent.mp4");
-    await combineVideo(parts, durations, silentCombined);
+    await combineVideo(plan, parts, durations, silentCombined, audit);
 
     if (plan.musicPath) {
-      await addMusic(silentCombined, plan.musicPath, outputPath);
+      await addMusic(silentCombined, plan.musicPath, outputPath, audit);
     } else {
-      await runFfmpeg(["-y", "-i", silentCombined, "-c", "copy", outputPath]);
-      if (plan.audioMode === "original") {
-        warnings.push("v0.1 renders preservation-first video without source dialogue/audio unless a music file is supplied. Original-audio mixing is intentionally deferred rather than risking broken crossfades.");
+      await runLogged(audit, ["-y", "-i", silentCombined, "-c", "copy", outputPath]);
+      if (plan.audioMode === "original" || plan.audioMode === "mix") {
+        warnings.push("Original-source audio preservation is requested, but cross-source original-audio mixing remains fail-safe: Reelora keeps the render silent rather than creating broken or desynchronized audio when a reliable mix cannot be produced.");
       }
     }
 
+    if (plan.options.targetFileSizeMb) await targetFileSize(outputPath, plan.options.targetFileSizeMb, audit);
     const finalInfo = await probeMedia(outputPath);
+    const thumbnailPath = plan.options.autoThumbnail ? await generateThumbnail(outputPath, audit) : undefined;
+    const coverPath = plan.options.coverCrop ? await generateCover(outputPath, audit) : undefined;
+
     return {
       outputPath,
       durationEstimate: finalInfo.duration,
       shotsRendered: plan.shots.length,
       warnings,
+      thumbnailPath,
+      coverPath,
+      ffmpegAudit: audit,
     };
   } finally {
     await rm(workDir, { recursive: true, force: true });
