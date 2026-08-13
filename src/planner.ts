@@ -12,12 +12,29 @@ function distributionFor(highlight: HighlightIntent) {
 
 function shotPattern(highlight: HighlightIntent): ShotType[] {
   if (highlight === "top_wear") {
-    return ["focus", "focus", "whole_body", "focus", "detail", "focus", "whole_body", "focus"];
+    // Ten equal-duration slots make the requested distribution exact by time:
+    // 7 focus + 2 whole body + 1 detail = 70% / 20% / 10%.
+    return [
+      "focus",
+      "focus",
+      "whole_body",
+      "focus",
+      "detail",
+      "focus",
+      "focus",
+      "whole_body",
+      "focus",
+      "focus",
+    ];
   }
   return ["focus", "whole_body", "focus", "detail", "focus", "whole_body"];
 }
 
-function targetDurations(pattern: ShotType[], total: number, distribution: ReturnType<typeof distributionFor>): number[] {
+function targetDurations(pattern: ShotType[], total: number, distribution: ReturnType<typeof distributionFor>, highlight: HighlightIntent): number[] {
+  if (highlight === "top_wear") {
+    return pattern.map(() => total / 10);
+  }
+
   const counts = {
     focus: pattern.filter((x) => x === "focus").length,
     whole_body: pattern.filter((x) => x === "whole_body").length,
@@ -41,7 +58,7 @@ function overlapRatio(a: CandidateSegment, b: CandidateSegment): number {
 
 function chooseCandidate(candidates: CandidateSegment[], used: CandidateSegment[]): CandidateSegment | undefined {
   const diverse = candidates.find((candidate) => used.every((u) => overlapRatio(candidate, u) < 0.35));
-  return diverse ?? candidates.find((candidate) => used.every((u) => overlapRatio(candidate, u) < 0.7)) ?? candidates[0];
+  return diverse ?? candidates.find((candidate) => used.every((u) => overlapRatio(candidate, u) < 0.7)) ?? candidates[used.length % candidates.length];
 }
 
 export function buildEditPlan(args: {
@@ -57,7 +74,7 @@ export function buildEditPlan(args: {
 
   const distribution = distributionFor(args.highlight);
   const pattern = shotPattern(args.highlight);
-  const durations = targetDurations(pattern, total, distribution);
+  const durations = targetDurations(pattern, total, distribution, args.highlight);
   const used: CandidateSegment[] = [];
   const shots: PlannedShot[] = [];
 
@@ -65,7 +82,7 @@ export function buildEditPlan(args: {
     const candidate = chooseCandidate(args.candidates, used);
     if (!candidate) return;
     used.push(candidate);
-    const targetDuration = Math.max(0.75, durations[index]);
+    const targetDuration = durations[index];
     shots.push({
       ...candidate,
       shotType,
