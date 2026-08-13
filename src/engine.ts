@@ -9,6 +9,7 @@ import { buildEditPlan } from "./planner.js";
 import { buildQualityReport } from "./quality.js";
 import { renderPlan } from "./render.js";
 import { getBrandProfile } from "./preferences.js";
+import { exportTimeline } from "./timeline.js";
 import { validatePlan, validateRenderedOutput } from "./validation.js";
 import { enrichCandidatesWithVision } from "./vision.js";
 import type { AudioMode, HighlightIntent, ReeloraAdvancedOptions } from "./types.js";
@@ -166,6 +167,11 @@ export async function editReel(request: EditRequest) {
     await writeFile(editPlanPath, JSON.stringify(rendered.plan, null, 2), "utf8");
     await writeFile(qualityPath, JSON.stringify(qualityReport, null, 2), "utf8");
 
+    const timelineBase = path.basename(output.outputName, path.extname(output.outputName));
+    const timelinePaths = options.timelineExport?.length
+      ? await exportTimeline(rendered.plan, outputsDir, timelineBase, options.timelineExport)
+      : [];
+
     const publicBaseUrl = process.env.PUBLIC_BASE_URL?.replace(/\/$/, "");
     const publicUrl = (filePath?: string) => filePath && publicBaseUrl
       ? `${publicBaseUrl}/outputs/${encodeURIComponent(path.basename(filePath))}`
@@ -174,12 +180,14 @@ export async function editReel(request: EditRequest) {
     return {
       ...rendered.render,
       editPlanPath,
+      timelinePaths,
       qualityReport,
       outputName: output.outputName,
       outputUrl: publicUrl(output.outputPath),
       thumbnailUrl: publicUrl(rendered.render.thumbnailPath),
       coverUrl: publicUrl(rendered.render.coverPath),
       editPlanUrl: publicUrl(editPlanPath),
+      timelineUrls: timelinePaths.map((timelinePath) => publicUrl(timelinePath)),
       qualityReportUrl: publicUrl(qualityPath),
       fallbackUsed: rendered.fallbackUsed,
       featureCount: REELORA_FEATURES.length,
