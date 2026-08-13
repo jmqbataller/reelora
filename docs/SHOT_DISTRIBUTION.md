@@ -1,6 +1,6 @@
 # Shot Distribution Rules
 
-Shot distribution is based on the user's requested product focus. The percentages describe the target share of the final edited Reel duration, not merely the number of source clips.
+Shot distribution is calculated by **timeline duration before the outro**, not merely by clip count.
 
 ## Top-wear highlight
 
@@ -10,40 +10,40 @@ When the user says:
 Highlight the top wear
 ```
 
-use this default distribution:
+and does not provide another percentage split, use:
 
-- **70% top-wear-focused shots**
-- **20% whole-body shots**
-- **10% supporting detail shots**
+- **70% top-wear / upper-body focus**
+- **20% whole-body context**
+- **10% supporting detail**
 
 **Total: 100%.**
 
-### 70% — Top-wear-focused
+### 70% — Top-wear focus
 
-Preferred framing:
+Preferred real-source framing:
 
 - shoulders to waist;
 - chest to waist;
 - half upper body;
 - upper torso close-up;
-- medium shot where the top remains visually dominant.
+- medium shot where the top is visually dominant.
 
-Use smart crop/reframing when a full-body source can naturally become a stronger upper-body composition.
+A full-body source may be reframed into an upper-body shot when the crop uses only original pixels and does not cut important garment details.
 
-### 20% — Whole-body
+### 20% — Whole body
 
-Use whole-body footage for:
+Use for:
 
 - outfit context;
 - overall fit;
 - model movement;
 - visual variation.
 
-Whole-body footage must remain secondary to the requested top-wear focus.
+Whole-body footage remains supporting context when top wear is the requested hero.
 
-### 10% — Supporting details
+### 10% — Details
 
-Use authentic source footage showing useful details such as:
+Use authentic source footage for details such as:
 
 - fabric texture;
 - neckline;
@@ -52,36 +52,46 @@ Use authentic source footage showing useful details such as:
 - stitching;
 - movement/stretch behavior.
 
-## Timing rule
+## Timing example
 
-Calculate the distribution against the final content duration before the outro whenever practical.
+For a 20-second product section before the outro:
 
-Example for a 20-second product section:
+- 14 seconds focus;
+- 4 seconds whole body;
+- 2 seconds detail.
 
-- 14 seconds top-wear-focused;
-- 4 seconds whole-body;
-- 2 seconds supporting details.
+The uploaded outro is a separate ending segment unless the user explicitly requests otherwise.
 
-The uploaded outro is treated as a separate ending segment unless the user explicitly wants it included in the percentage calculation.
+## Custom percentages
 
-## Shortage handling
-
-If the raw footage does not contain enough safe, high-quality footage to meet the exact split:
-
-1. Prefer reframing/cropping existing real footage before reusing clips.
-2. Avoid obvious repetition.
-3. Never invent/generate missing product footage.
-4. Stay as close as possible to the requested distribution.
-5. Preserve quality and product fidelity over forcing an exact percentage.
-
-## User overrides
-
-If the user supplies a different split, follow it as long as the percentages total 100%.
-
-Example:
+If the user says:
 
 ```text
-Highlight the top wear: 80% upper body, 20% whole body.
+80% top wear, 20% whole body
 ```
 
-Then use exactly that requested distribution and omit detail shots as a separate category unless they can be naturally counted inside the user's specified categories.
+interpret this as:
+
+- focus = 80%
+- whole body = 20%
+- detail = 0%
+
+If values are expressed as weights rather than exact percentages, Reelora normalizes them to 100%.
+
+## Footage shortage behavior
+
+Do **not** break the requested distribution just to hit a requested duration.
+
+When selected source windows are too short:
+
+1. try another safe, high-quality source window;
+2. use preservation-safe reframing of real pixels when appropriate;
+3. reduce the total content duration if necessary;
+4. keep the requested timeline distribution exact/within validation tolerance;
+5. never generate replacement footage to fill missing time.
+
+Quality and preservation are more important than forcing a longer Reel.
+
+## Other highlight defaults
+
+Reelora may use other focus/whole-body/detail defaults for other intents such as fabric, print, fit, pants, shoes, or front/back. Explicit user percentages always take precedence over those defaults while strict preservation rules remain non-negotiable.
