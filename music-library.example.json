@@ -1,0 +1,19 @@
+{
+  "tracks": [
+    {
+      "id": "premium-fashion-01",
+      "title": "Premium Fashion Beat",
+      "file": "premium-fashion-01.mp3",
+      "bpm": 116,
+      "energy": 0.68,
+      "mood": "premium-fashion",
+      "rights": {
+        "kind": "licensed",
+        "commercialUse": true,
+        "source": "replace-with-license-provider-or-receipt-reference",
+        "attribution": "",
+        "note": "Only list tracks here when you have a reliable record that commercial use is permitted."
+      }
+    }
+  ]
+}
