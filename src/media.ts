@@ -2,6 +2,7 @@ import { mkdir, writeFile, access } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { fileURLToPath } from "node:url";
 
 function extensionFromUrl(value: string): string {
   try {
@@ -26,7 +27,7 @@ export async function materializeMedia(input: string, workDir: string, label: st
     return output;
   }
 
-  const resolved = input.startsWith("file://") ? new URL(input).pathname : path.resolve(input);
+  const resolved = input.startsWith("file://") ? fileURLToPath(input) : path.resolve(input);
   await access(resolved, constants.R_OK);
   return resolved;
 }
