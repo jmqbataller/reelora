@@ -9,6 +9,7 @@ on:
       - "README.md"
       - "docs/**"
       - "skill/**"
+      - "src/**"
       - "scripts/build-skill-package.mjs"
       - ".github/workflows/release-skill.yml"
   workflow_dispatch:
