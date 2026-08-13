@@ -1,42 +1,39 @@
 import { probeMedia } from "./ffmpeg.js";
-import type { EditPlan } from "./types.js";
+import { actualDistribution } from "./quality.js";
+import type { EditPlan, ShotDistribution } from "./types.js";
 
-function ratio(value: number, total: number): number {
-  return total > 0 ? value / total : 0;
+function near(a: number, b: number, tolerance = 0.012): boolean {
+  return Math.abs(a - b) <= tolerance;
+}
+
+function validateDistribution(actual: ShotDistribution, expected: ShotDistribution): void {
+  if (!near(actual.focus, expected.focus) || !near(actual.wholeBody, expected.wholeBody) || !near(actual.detail, expected.detail)) {
+    throw new Error(`Edit plan violates the requested shot distribution. actual=${JSON.stringify(actual)} expected=${JSON.stringify(expected)}`);
+  }
 }
 
 export function validatePlan(plan: EditPlan): void {
   if (!plan.shots.length) throw new Error("Edit plan contains no shots.");
+  if (plan.options.noGenerativeMode === false) throw new Error("Reelora automatic editing requires no-generative preservation mode.");
 
   for (const shot of plan.shots) {
     if (shot.targetDuration <= 0) throw new Error("Edit plan contains a non-positive shot duration.");
-    if (shot.targetDuration > shot.duration + 0.01) {
+    const sourceNeeded = shot.targetDuration * (shot.playbackRate ?? 1);
+    if (sourceNeeded > shot.duration + 0.02) {
       throw new Error("Edit plan attempted to use more source duration than exists in a candidate clip.");
+    }
+    if (shot.cropRegion) {
+      const { x, y, width, height } = shot.cropRegion;
+      if (x < 0 || y < 0 || width <= 0 || height <= 0 || x + width > 1.001 || y + height > 1.001) {
+        throw new Error("Vision crop region is outside the real source frame.");
+      }
     }
   }
 
-  if (plan.highlight === "top_wear") {
-    const total = plan.shots.reduce((sum, shot) => sum + shot.targetDuration, 0);
-    const focus = plan.shots.filter((shot) => shot.shotType === "focus").reduce((sum, shot) => sum + shot.targetDuration, 0);
-    const wholeBody = plan.shots.filter((shot) => shot.shotType === "whole_body").reduce((sum, shot) => sum + shot.targetDuration, 0);
-    const detail = plan.shots.filter((shot) => shot.shotType === "detail").reduce((sum, shot) => sum + shot.targetDuration, 0);
+  validateDistribution(actualDistribution(plan), plan.distribution);
 
-    const actual = {
-      focus: ratio(focus, total),
-      wholeBody: ratio(wholeBody, total),
-      detail: ratio(detail, total),
-    };
-
-    const tolerance = 0.005;
-    if (
-      Math.abs(actual.focus - 0.7) > tolerance ||
-      Math.abs(actual.wholeBody - 0.2) > tolerance ||
-      Math.abs(actual.detail - 0.1) > tolerance
-    ) {
-      throw new Error(
-        `Top-wear plan violates the required 70/20/10 distribution: ${JSON.stringify(actual)}`,
-      );
-    }
+  if (plan.highlight === "top_wear" && !near(plan.distribution.focus, 0.7, 0.001) && !plan.options.distribution) {
+    throw new Error("Default top-wear edits must keep the 70% focus / 20% whole-body / 10% detail rule.");
   }
 }
 
