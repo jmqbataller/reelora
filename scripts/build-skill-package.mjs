@@ -15,7 +15,9 @@ await rm(dist, { recursive: true, force: true });
 await mkdir(references, { recursive: true });
 await mkdir(scripts, { recursive: true });
 
-await cp(path.join(root, "SKILL.md"), path.join(skillRoot, "SKILL.md"));
+const baseSkill = await readFile(path.join(root, "SKILL.md"), "utf8");
+const musicDirective = `\n\n## Automatic premium music and transition addendum\n\nFor automatic soundtrack replacement, beat-aware pacing, verified music-rights behavior, the sample-free Reelora Original Beat fallback, and premium style-aware transition rules, read and follow \`references/MUSIC_AND_TRANSITIONS.md\`. Unless the user explicitly requests silence, the default automatic Reel workflow may replace inconsistent raw clip audio with the selected premium music bed. Never describe an unverified random track as copyright-free.\n`;
+await writeFile(path.join(skillRoot, "SKILL.md"), `${baseSkill.trimEnd()}${musicDirective}`, "utf8");
 await cp(path.join(root, "skill", "README.md"), path.join(skillRoot, "README.md"));
 for (const file of ["EDITING_RULES.md", "PRESERVATION.md", "SHOT_DISTRIBUTION.md", "FEATURES.md"]) {
   await cp(path.join(root, "docs", file), path.join(references, file));
@@ -31,6 +33,16 @@ await writeFile(
       preservationMode: "strict-no-generative",
       entrypoint: "SKILL.md",
       repository: "https://github.com/jmqbataller/reelora",
+      audioDefaults: {
+        automaticPremiumMusic: true,
+        sourceAudioReplacement: true,
+        verifiedRightsFirst: true,
+        sampleFreeOriginalFallback: true
+      },
+      transitionDefaults: {
+        premiumStyleAware: true,
+        deterministicRealPixelsOnly: true
+      },
       prohibitions: ["overlay-text", "overlay-objects", "ai-voice-over", "generative-video-replacement"],
     },
     null,
