@@ -73,18 +73,22 @@ jobs:
           ## Highlights
           - raw videos + supplied ending/outro → automatic Reel workflow
           - best-moment selection, cutting, rearrangement, safe crop/reframe
-          - Vision Director metadata interface and product-following crop support
-          - default top-wear distribution: 70% upper-body / 20% whole-body / 10% detail
-          - custom shot-percentage control
-          - premium, minimal, fashion, fast ecommerce, cinematic, luxury, and clean-commercial styles
-          - Instagram Reels, TikTok, YouTube Shorts, and Facebook Reels presets
-          - fade in/out, cuts, dissolves, safe motion transitions, high-FPS slow motion
-          - product color, fabric texture, logo/print, face, hand, and crop integrity guards
-          - A/B Reel variants, batch editing, saved brand profiles
-          - auto thumbnail, cover crop, edit-plan JSON, quality report, FFmpeg audit
-          - CPU H.264 plus optional NVIDIA NVENC, Intel QSV, and AMD AMF
+          - exact/custom product shot distributions, including 70/20/10 top-wear default
+          - expanded Vision Director observations for product, model, logo, print, fabric, pose, variant, SKU, visibility, occlusion, blur, movement and confidence
+          - reference-product/model/SKU architecture and preservation guards
+          - reference-Reel editing-DNA analysis that copies pacing/structure only, never logos/text/music/assets
+          - structured revision controls: lock/unlock/replace/blacklist/favorite/edit-region
+          - product color, fabric texture, logo/print, face, hand, body-shape and crop integrity guards
+          - timeline JSON, CSV and CMX-style EDL exports
+          - quality report, edit-plan JSON, thumbnail/cover and FFmpeg audit
+          - A/B Reel variants, batch editing, saved brand profiles and campaign hooks
+          - runtime diagnostics for FFmpeg/FFprobe and H.264 encoders
+          - local/offline/desktop/watch-folder/queue/cache architecture hooks
+          - CPU H.264 plus optional NVIDIA NVENC, Intel QSV and AMD AMF
           - strict no-generative mode
           - no overlay text, no overlay objects, no AI voice-over
+
+          The capability catalog explicitly labels features as implemented, adapter-ready, or planned so Reelora never pretends an unavailable vision/desktop integration executed.
 
           Download **reelora-skill-v${VERSION}.zip** and upload it from ChatGPT's Skills interface when Skill uploads are available for your account/workspace.
           EOF
