@@ -1,8 +1,8 @@
 {
   "name": "reelora",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": false,
-  "description": "Preservation-first automatic Reel director, FFmpeg renderer, and MCP/ChatGPT skill adapter for product and fashion videos.",
+  "description": "Preservation-first automatic Reel director, FFmpeg renderer, MCP/ChatGPT skill adapter, and advanced product-video editing architecture.",
   "type": "module",
   "engines": {
     "node": ">=20"
