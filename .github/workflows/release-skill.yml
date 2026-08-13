@@ -52,7 +52,11 @@ jobs:
           archive = sys.argv[1]
           with zipfile.ZipFile(archive) as z:
               names = set(z.namelist())
-              required = {"reelora/SKILL.md", "reelora/manifest.json"}
+              required = {
+                  "reelora/SKILL.md",
+                  "reelora/manifest.json",
+                  "reelora/references/MUSIC_AND_TRANSITIONS.md"
+              }
               missing = required - names
               if missing:
                   raise SystemExit(f"Missing required skill files: {sorted(missing)}")
@@ -73,6 +77,13 @@ jobs:
 
           ## Highlights
           - raw videos + supplied ending/outro → automatic Reel workflow
+          - automatic premium music replacement when no song is supplied
+          - verified local music-library selection with explicit commercial-use rights metadata
+          - sample-free procedural Reelora Original Beat fallback with style-aware BPM
+          - beat-aware pacing that nudges shot timing toward the selected BPM without overriding product/framing rules
+          - final music loudness normalization plus clean audio fade-in/fade-out
+          - premium style-aware FFmpeg transition engine using real source pixels only
+          - premium, luxury, fashion, cinematic, minimal, fast-ecommerce, and clean-commercial transition personalities
           - best-moment selection, cutting, rearrangement, safe crop/reframe
           - exact/custom product shot distributions, including 70/20/10 top-wear default
           - expanded Vision Director observations for product, model, logo, print, fabric, pose, variant, SKU, visibility, occlusion, blur, movement and confidence
@@ -89,7 +100,7 @@ jobs:
           - strict no-generative mode
           - no overlay text, no overlay objects, no AI voice-over
 
-          The capability catalog explicitly labels features as implemented, adapter-ready, or planned so Reelora never pretends an unavailable vision/desktop integration executed.
+          Music-rights note: Reelora does not label random internet audio as copyright-free. Automatic library tracks require explicit rights metadata; the original-beat fallback contains no third-party recording/sample, but Reelora does not make a universal legal guarantee about copyright status in every jurisdiction.
 
           Download **reelora-skill-v${VERSION}.zip** and upload it from ChatGPT's Skills interface when Skill uploads are available for your account/workspace.
           EOF
