@@ -12,7 +12,7 @@ const outputsDir = path.join(dataDir, "outputs");
 await mkdir(outputsDir, { recursive: true });
 
 app.disable("x-powered-by");
-app.use(express.json({ limit: "4mb" }));
+app.use(express.json({ limit: "16mb" }));
 app.use(
   "/outputs",
   express.static(outputsDir, {
@@ -23,14 +23,12 @@ app.use(
 );
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "reelora", version: "0.1.0" });
+  res.json({ ok: true, service: "reelora", version: "0.2.0", preservationMode: "strict-no-generative" });
 });
 
 app.post("/mcp", async (req, res) => {
   const server = createReeloraMcpServer();
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: undefined,
-  });
+  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
 
   res.on("close", () => {
     void transport.close();
@@ -60,5 +58,5 @@ app.delete("/mcp", (_req, res) => {
 });
 
 app.listen(port, "0.0.0.0", () => {
-  console.log(`Reelora MCP server listening on port ${port}`);
+  console.log(`Reelora v0.2 MCP server listening on port ${port}`);
 });
