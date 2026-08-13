@@ -1,48 +1,15 @@
-import type { AudioMode, CandidateSegment, EditPlan, HighlightIntent, PlannedShot, ShotType } from "./types.js";
-
-function distributionFor(highlight: HighlightIntent) {
-  if (highlight === "top_wear") {
-    return { focus: 0.7, wholeBody: 0.2, detail: 0.1 };
-  }
-  if (highlight === "fit" || highlight === "front_back") {
-    return { focus: 0.5, wholeBody: 0.4, detail: 0.1 };
-  }
-  return { focus: 0.6, wholeBody: 0.25, detail: 0.15 };
-}
-
-function shotPattern(highlight: HighlightIntent): ShotType[] {
-  if (highlight === "top_wear") {
-    // Ten equal-duration slots make the requested distribution exact by time:
-    // 7 focus + 2 whole body + 1 detail = 70% / 20% / 10%.
-    return [
-      "focus",
-      "focus",
-      "whole_body",
-      "focus",
-      "detail",
-      "focus",
-      "focus",
-      "whole_body",
-      "focus",
-      "focus",
-    ];
-  }
-  return ["focus", "whole_body", "focus", "detail", "focus", "whole_body"];
-}
-
-function targetDurations(pattern: ShotType[], total: number, distribution: ReturnType<typeof distributionFor>): number[] {
-  const counts = {
-    focus: pattern.filter((x) => x === "focus").length,
-    whole_body: pattern.filter((x) => x === "whole_body").length,
-    detail: pattern.filter((x) => x === "detail").length,
-  };
-
-  return pattern.map((type) => {
-    if (type === "focus") return (total * distribution.focus) / counts.focus;
-    if (type === "whole_body") return (total * distribution.wholeBody) / counts.whole_body;
-    return (total * distribution.detail) / counts.detail;
-  });
-}
+import { defaultAdvancedOptions, normalizeDistribution } from "./features.js";
+import { STYLE_PROFILES } from "./profiles.js";
+import type {
+  AudioMode,
+  CandidateSegment,
+  EditPlan,
+  HighlightIntent,
+  PlannedShot,
+  ReeloraAdvancedOptions,
+  ShotDistribution,
+  ShotType,
+} from "./types.js";
 
 function overlapRatio(a: CandidateSegment, b: CandidateSegment): number {
   if (a.sourcePath !== b.sourcePath) return 0;
@@ -52,9 +19,136 @@ function overlapRatio(a: CandidateSegment, b: CandidateSegment): number {
   return (end - start) / Math.min(a.duration, b.duration);
 }
 
-function chooseCandidate(candidates: CandidateSegment[], used: CandidateSegment[]): CandidateSegment | undefined {
-  const diverse = candidates.find((candidate) => used.every((u) => overlapRatio(candidate, u) < 0.35));
-  return diverse ?? candidates.find((candidate) => used.every((u) => overlapRatio(candidate, u) < 0.7)) ?? candidates[used.length % candidates.length];
+function countsForDistribution(distribution: ShotDistribution, slots = 10): Record<ShotType, number> {
+  const entries: Array<[ShotType, number]> = [
+    ["focus", distribution.focus],
+    ["whole_body", distribution.wholeBody],
+    ["detail", distribution.detail],
+  ];
+  const raw = entries.map(([type, value]) => ({ type, value: value * slots, count: Math.floor(value * slots) }));
+  let assigned = raw.reduce((sum, item) => sum + item.count, 0);
+
+  for (const item of raw) {
+    if (item.value > 0 && item.count === 0) {
+      item.count = 1;
+      assigned += 1;
+    }
+  }
+
+  while (assigned < slots) {
+    const next = [...raw].sort((a, b) => (b.value - b.count) - (a.value - a.count))[0];
+    next.count += 1;
+    assigned += 1;
+  }
+  while (assigned > slots) {
+    const next = [...raw]
+      .filter((item) => item.count > (item.value > 0 ? 1 : 0))
+      .sort((a, b) => (a.value - a.count) - (b.value - b.count))[0];
+    if (!next) break;
+    next.count -= 1;
+    assigned -= 1;
+  }
+
+  return {
+    focus: raw.find((item) => item.type === "focus")?.count ?? 0,
+    whole_body: raw.find((item) => item.type === "whole_body")?.count ?? 0,
+    detail: raw.find((item) => item.type === "detail")?.count ?? 0,
+  };
+}
+
+function interleavedPattern(counts: Record<ShotType, number>): ShotType[] {
+  const remaining = { ...counts };
+  const pattern: ShotType[] = [];
+  const preferred: ShotType[] = ["focus", "focus", "whole_body", "focus", "detail", "focus", "whole_body", "focus", "detail", "focus"];
+
+  for (const type of preferred) {
+    if (remaining[type] > 0) {
+      pattern.push(type);
+      remaining[type] -= 1;
+    }
+  }
+
+  for (const type of ["focus", "whole_body", "detail"] as ShotType[]) {
+    while (remaining[type] > 0) {
+      pattern.push(type);
+      remaining[type] -= 1;
+    }
+  }
+  return pattern;
+}
+
+function candidateRank(candidate: CandidateSegment, shotType: ShotType, used: CandidateSegment[], options: ReeloraAdvancedOptions): number {
+  let score = candidate.score;
+  if (shotType === "detail") score *= 0.8 + (candidate.productVisibility ?? 0.55) * 0.55;
+  if (shotType === "focus") score *= 0.85 + (candidate.productVisibility ?? 0.55) * 0.4;
+  if (shotType === "whole_body" && candidate.pose && candidate.pose !== "detail") score *= 1.08;
+
+  if (options.duplicateShotDetection !== false) {
+    const overlap = Math.max(0, ...used.map((item) => overlapRatio(candidate, item)));
+    score *= Math.max(0.25, 1 - overlap * 0.8);
+  }
+
+  if (options.poseVariety !== false && candidate.pose) {
+    const samePose = used.filter((item) => item.pose && item.pose === candidate.pose).length;
+    score *= Math.max(0.55, 1 - samePose * 0.12);
+  }
+
+  if (options.variantBalance !== false && candidate.variant) {
+    const sameVariant = used.filter((item) => item.variant && item.variant === candidate.variant).length;
+    score *= Math.max(0.65, 1 - sameVariant * 0.08);
+  }
+
+  if ((candidate.confidence ?? 1) < (options.confidenceThreshold ?? 0.55)) score *= 0.65;
+  return score;
+}
+
+function chooseCandidate(
+  candidates: CandidateSegment[],
+  shotType: ShotType,
+  used: CandidateSegment[],
+  options: ReeloraAdvancedOptions,
+): CandidateSegment | undefined {
+  return [...candidates]
+    .sort((a, b) => candidateRank(b, shotType, used, options) - candidateRank(a, shotType, used, options))[0];
+}
+
+function maximumSafeTotal(
+  selected: Array<CandidateSegment & { shotType: ShotType }>,
+  distribution: ShotDistribution,
+): number {
+  const typeData: Array<[ShotType, number]> = [
+    ["focus", distribution.focus],
+    ["whole_body", distribution.wholeBody],
+    ["detail", distribution.detail],
+  ];
+  const caps: number[] = [];
+  for (const [type, share] of typeData) {
+    if (share <= 0) continue;
+    const items = selected.filter((shot) => shot.shotType === type);
+    if (!items.length) return 0;
+    const shortest = Math.min(...items.map((item) => item.duration));
+    caps.push((shortest * items.length) / share);
+  }
+  return caps.length ? Math.min(...caps) : 0;
+}
+
+function plannedDurationFor(
+  type: ShotType,
+  total: number,
+  distribution: ShotDistribution,
+  counts: Record<ShotType, number>,
+): number {
+  const share = type === "focus" ? distribution.focus : type === "whole_body" ? distribution.wholeBody : distribution.detail;
+  return counts[type] > 0 ? (total * share) / counts[type] : 0;
+}
+
+function transitionFor(index: number, options: ReeloraAdvancedOptions): PlannedShot["transition"] {
+  if (index === 0) return "cut";
+  const mode = options.transitionMode ?? STYLE_PROFILES[options.style ?? "premium"].transitionMode;
+  if (mode === "cuts") return "cut";
+  if (mode === "soft") return index % 3 === 0 ? "dissolve" : "fade";
+  if (mode === "motion") return index % 3 === 0 ? "motion" : "cut";
+  return index % 4 === 0 ? "dissolve" : index % 3 === 0 ? "fade" : "cut";
 }
 
 export function buildEditPlan(args: {
@@ -64,41 +158,37 @@ export function buildEditPlan(args: {
   highlight: HighlightIntent;
   targetContentDuration?: number;
   audioMode?: AudioMode;
+  options?: ReeloraAdvancedOptions;
 }): EditPlan {
-  const total = Math.max(6, Math.min(args.targetContentDuration ?? 15, 30));
   if (!args.candidates.length) throw new Error("No usable candidate clips were found in the raw videos.");
 
-  const distribution = distributionFor(args.highlight);
-  const pattern = shotPattern(args.highlight);
+  const options = defaultAdvancedOptions(args.highlight, args.options);
+  const distribution = normalizeDistribution(options.distribution!);
+  const style = STYLE_PROFILES[options.style ?? "premium"];
+  const automaticDuration = Math.max(8, Math.min(24, args.candidates.length * 1.15 * style.shotLengthMultiplier));
+  const requestedTotal = Math.max(6, Math.min(args.targetContentDuration ?? automaticDuration, 45));
+  const counts = countsForDistribution(distribution, 10);
+  const pattern = interleavedPattern(counts);
   const selected: Array<CandidateSegment & { shotType: ShotType }> = [];
   const used: CandidateSegment[] = [];
 
   for (const shotType of pattern) {
-    const candidate = chooseCandidate(args.candidates, used);
+    const candidate = chooseCandidate(args.candidates, shotType, used, options);
     if (!candidate) continue;
     used.push(candidate);
     selected.push({ ...candidate, shotType });
   }
 
   if (!selected.length) throw new Error("Unable to construct a non-empty edit plan.");
+  const safeTotal = maximumSafeTotal(selected, distribution);
+  const actualTotal = Math.min(requestedTotal, safeTotal || requestedTotal);
 
-  let shots: PlannedShot[];
-  if (args.highlight === "top_wear") {
-    const requestedSlot = total / 10;
-    // Never violate 70/20/10 just to hit a requested duration. If source windows are
-    // shorter, reduce every slot equally so the time distribution remains exact.
-    const slot = Math.min(requestedSlot, ...selected.map((shot) => shot.duration));
-    shots = selected.map((shot) => ({
-      ...shot,
-      targetDuration: Number(slot.toFixed(3)),
-    }));
-  } else {
-    const durations = targetDurations(pattern, total, distribution);
-    shots = selected.map((shot, index) => ({
-      ...shot,
-      targetDuration: Number(Math.min(durations[index] ?? shot.duration, shot.duration).toFixed(3)),
-    }));
-  }
+  const shots: PlannedShot[] = selected.map((shot, index) => ({
+    ...shot,
+    targetDuration: Number(plannedDurationFor(shot.shotType, actualTotal, distribution, counts).toFixed(3)),
+    transition: transitionFor(index, options),
+    playbackRate: options.slowMotionFromHighFps && shot.reasons.includes("high-frame-rate") && index % 4 === 2 ? 0.8 : 1,
+  }));
 
   const plannedDuration = shots.reduce((sum, shot) => sum + shot.targetDuration, 0);
   if (plannedDuration <= 0) throw new Error("Unable to construct a non-empty edit plan.");
@@ -110,6 +200,7 @@ export function buildEditPlan(args: {
     shots,
     outroPath: args.outroPath,
     musicPath: args.musicPath,
-    audioMode: args.musicPath ? "music" : args.audioMode ?? "silent",
+    audioMode: args.musicPath ? (args.audioMode === "mix" ? "mix" : "music") : args.audioMode ?? "silent",
+    options: options as EditPlan["options"],
   };
 }
