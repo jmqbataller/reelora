@@ -1,0 +1,29 @@
+{
+  "name": "reelora",
+  "version": "0.1.0",
+  "private": false,
+  "description": "Preservation-first automatic Reel editor and MCP adapter for product/fashion videos.",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "start": "node dist/http.js",
+    "start:stdio": "node dist/index.js",
+    "dev": "tsx src/http.ts",
+    "dev:stdio": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.17.0",
+    "express": "^5.1.0",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}
