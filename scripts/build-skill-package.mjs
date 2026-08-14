@@ -16,7 +16,7 @@ await mkdir(references, { recursive: true });
 await mkdir(scripts, { recursive: true });
 
 const baseSkill = await readFile(path.join(root, "SKILL.md"), "utf8");
-const musicDirective = `\n\n## Automatic premium music and transition addendum\n\nFor automatic soundtrack replacement, beat-aware pacing, verified music-rights behavior, the sample-free Reelora Original Beat fallback, and premium style-aware transition rules, read and follow \`references/MUSIC_AND_TRANSITIONS.md\`. Unless the user explicitly requests silence, the default automatic Reel workflow may replace inconsistent raw clip audio with the selected premium music bed. Never describe an unverified random track as copyright-free.\n`;
+const musicDirective = `\n\n## Executable music and transition addendum\n\nFor automatic soundtrack replacement, cut-driven beat pacing, verified music-rights behavior, the sample-free Reelora original fallback, and modern transition rules, read and follow \`references/MUSIC_AND_TRANSITIONS.md\`. When MCP is unavailable but Python + FFmpeg + FFprobe are available, run \`scripts/reelora_edit.py\` rather than stopping at instructions. Unless the user explicitly requests silence/original sound/mix, the automatic workflow must replace source clip audio with the selected/generated music bed and verify the final output. Never describe an unverified random track as copyright-free.\n`;
 await writeFile(path.join(skillRoot, "SKILL.md"), `${baseSkill.trimEnd()}${musicDirective}`, "utf8");
 await cp(path.join(root, "skill", "README.md"), path.join(skillRoot, "README.md"));
 for (const file of ["EDITING_RULES.md", "PRESERVATION.md", "SHOT_DISTRIBUTION.md", "FEATURES.md"]) {
@@ -33,14 +33,23 @@ await writeFile(
       preservationMode: "strict-no-generative",
       entrypoint: "SKILL.md",
       repository: "https://github.com/jmqbataller/reelora",
+      executableFallback: {
+        script: "scripts/reelora_edit.py",
+        runtimeCheck: "scripts/check_reelora_runtime.py",
+        requires: ["python3", "ffmpeg", "ffprobe"]
+      },
       audioDefaults: {
-        automaticPremiumMusic: true,
+        automaticMusic: true,
         sourceAudioReplacement: true,
         verifiedRightsFirst: true,
-        sampleFreeOriginalFallback: true
+        sampleFreeOriginalFallback: true,
+        verifyFinalAudioStream: true
       },
       transitionDefaults: {
-        premiumStyleAware: true,
+        cutDriven: true,
+        variableShotRhythm: true,
+        microTransitionsOnly: true,
+        sparseFlash: true,
         deterministicRealPixelsOnly: true
       },
       prohibitions: ["overlay-text", "overlay-objects", "ai-voice-over", "generative-video-replacement"],
