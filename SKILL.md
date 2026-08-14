@@ -3,7 +3,7 @@ name: reelora
 description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, add clean transitions/fade in/fade out and restrained flash accents, automatically use trend-inspired original or verified commercial-safe music when no track is supplied, sync edits to music, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
 ---
 
-# Reelora v0.4
+# Reelora v0.5
 
 ## Core workflow
 
