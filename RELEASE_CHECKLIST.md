@@ -7,8 +7,8 @@ Use this checklist before publishing a new ChatGPT Skill ZIP.
 - [ ] Confirm `package.json` contains the intended release version.
 - [ ] Confirm `README.md` Download ZIP link points to the same version.
 - [ ] Add the release entry to `CHANGELOG.md`.
-- [ ] Confirm `SKILL.md` describes the features included in the release.
-- [ ] Confirm `.env.example` documents any new runtime settings.
+- [ ] Confirm `SKILL.md` describes executable fallback behavior, music replacement, and modern cut-driven transitions.
+- [ ] Confirm `.env.example` documents current runtime defaults.
 
 ## 2. Local validation
 
@@ -21,10 +21,10 @@ npm run build
 npm run pack:skill
 ```
 
-Expected ZIP for v0.5.0:
+Expected ZIP for v0.5.1:
 
 ```text
-dist-skill/reelora-skill-v0.5.0.zip
+dist-skill/reelora-skill-v0.5.1.zip
 ```
 
 - [ ] `npm install` completes successfully.
@@ -40,60 +40,91 @@ Open the ZIP and confirm these files exist:
 reelora/SKILL.md
 reelora/manifest.json
 reelora/references/MUSIC_AND_TRANSITIONS.md
+reelora/scripts/check_reelora_runtime.py
+reelora/scripts/reelora_edit.py
 ```
-
-Also confirm the archive contains the expected Reelora reference documents and runtime helper scripts.
 
 - [ ] ZIP opens without corruption.
 - [ ] ZIP has one top-level `reelora/` folder.
-- [ ] `manifest.json` shows the correct version.
-- [ ] `SKILL.md` contains the current automatic-music and restrained-flash behavior.
+- [ ] `manifest.json` shows version `0.5.1`.
+- [ ] `manifest.json` points `executableFallback.script` to `scripts/reelora_edit.py`.
+- [ ] `SKILL.md` requires actual rendering when MCP or local FFmpeg execution is available.
 
-## 4. Music and transition validation
+## 4. Executable fallback smoke test
 
-- [ ] Generate at least one automatic-music Reel without supplying a song.
-- [ ] Confirm the selected/generated music matches the requested editing style and product highlight.
-- [ ] Confirm no third-party copyrighted recording or sample is bundled by the original generator.
-- [ ] Confirm flash accents are sparse and restrained.
-- [ ] Confirm no rapid strobing or repeated full-white frames are produced.
-- [ ] Confirm the product/model/fabric remains visually unchanged.
+Run a real fallback edit with at least one raw video and one outro:
+
+```bash
+python3 skill/scripts/reelora_edit.py \
+  --input raw-1.mp4 \
+  --outro outro.mp4 \
+  --output test-final.mp4 \
+  --style fashion \
+  --highlight top_wear
+```
+
+- [ ] Script completes successfully.
+- [ ] JSON output reports `source_audio_replaced: true`.
+- [ ] JSON output reports `music_source: reelora-original` when no song was supplied.
+- [ ] Final MP4 contains both video and audio streams.
+- [ ] Audio sample rate is normal playback-compatible output.
+- [ ] No source clip soundtrack remains in the default automatic mix.
+
+Repeat once with `--music supplied-song.mp3`:
+
+- [ ] JSON output reports `music_source: user-supplied`.
+- [ ] Supplied music is audible in the final MP4.
+
+## 5. Music and transition validation
+
+- [ ] Automatic music matches the requested style/highlight closely enough for the edit direction.
+- [ ] No third-party copyrighted recording/sample is bundled by the Reelora original generator.
+- [ ] Cut timing is visibly varied rather than repeating the same duration for every clip.
+- [ ] Most fashion/ecommerce changes are clean beat cuts.
+- [ ] Micro-motion/whip/dip effects are occasional only.
+- [ ] No long repeated dissolves or obvious effect on every cut.
+- [ ] Flash is zero/one or otherwise extremely sparse for a short Reel.
+- [ ] No rapid strobing or repeated full-white frames.
+- [ ] Product/model/fabric remains visually unchanged.
 
 Recommended default environment values:
 
 ```env
 REELORA_AUTO_MUSIC=1
 REELORA_SUBTLE_FLASH=1
-REELORA_FLASH_CADENCE=5
-REELORA_FLASH_STRENGTH=0.10
+REELORA_FLASH_CADENCE=8
+REELORA_FLASH_STRENGTH=0.08
 ```
 
-## 5. GitHub Release
+## 6. GitHub Release
 
 The repository workflow `.github/workflows/release-skill.yml` automatically builds and publishes the ZIP when release-relevant files are pushed to `main`.
 
-For v0.5.0, verify the release contains:
+For v0.5.1, verify:
 
 ```text
-Tag: v0.5.0
-Title: Reelora v0.5.0 – Trend-Inspired Music + Subtle Flash Accents
-Asset: reelora-skill-v0.5.0.zip
+Tag: v0.5.1
+Title: Reelora v0.5.1 – Executable Music Replacement + Cleaner Beat Cuts
+Asset: reelora-skill-v0.5.1.zip
 ```
 
-- [ ] GitHub Actions `Reelora Skill Release` workflow passes.
-- [ ] Release tag is correct.
+- [ ] GitHub Actions `Reelora CI` passes.
+- [ ] GitHub Actions `Reelora Skill Release` passes.
+- [ ] Release tag/title are correct.
 - [ ] Release notes match `CHANGELOG.md`.
 - [ ] ZIP asset is attached and downloadable.
-- [ ] README Download ZIP button/link works.
+- [ ] README Download ZIP link works.
 
-## 6. ChatGPT Skill upload test
+## 7. ChatGPT Skill upload test
 
-- [ ] Download `reelora-skill-v0.5.0.zip` from GitHub Releases.
-- [ ] Upload/install the ZIP in the ChatGPT Skill interface available to your account/workspace.
-- [ ] Confirm Reelora is recognized as the current version.
-- [ ] Run one simple product Reel test with automatic music.
-- [ ] Run one fashion Reel test with subtle flash accents.
+- [ ] Download `reelora-skill-v0.5.1.zip` from GitHub Releases.
+- [ ] Upload/install the ZIP in ChatGPT Skills.
+- [ ] Confirm the ZIP contains `scripts/reelora_edit.py`.
+- [ ] Run one product/fashion edit without supplying music and verify the song is actually replaced.
+- [ ] Run one edit with a supplied song and verify that supplied song is used.
+- [ ] Confirm transitions feel cut-driven rather than slideshow-like.
 - [ ] Confirm preservation rules still apply.
 
 ## Release complete
 
-A release is ready only when the build, ZIP verification, GitHub Release, and at least one ChatGPT Skill smoke test all pass.
+A release is ready only when build, executable fallback, audio replacement verification, transition smoke test, ZIP verification, GitHub Release, and at least one ChatGPT Skill test all pass.
