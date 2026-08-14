@@ -61,7 +61,9 @@ jobs:
               required = {
                   "reelora/SKILL.md",
                   "reelora/manifest.json",
-                  "reelora/references/MUSIC_AND_TRANSITIONS.md"
+                  "reelora/references/MUSIC_AND_TRANSITIONS.md",
+                  "reelora/scripts/check_reelora_runtime.py",
+                  "reelora/scripts/reelora_edit.py"
               }
               missing = required - names
               if missing:
@@ -72,6 +74,9 @@ jobs:
                   raise SystemExit(
                       f"Manifest version {manifest.get('version')} does not match package version {expected_version}"
                   )
+              fallback = manifest.get("executableFallback", {})
+              if fallback.get("script") != "scripts/reelora_edit.py":
+                  raise SystemExit("Manifest does not point to executable Reelora editor")
 
               print(f"Verified {archive} with {len(names)} files; version={expected_version}")
           PY
@@ -112,7 +117,9 @@ jobs:
           TAG="v${VERSION}"
           ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
 
-          if [ "$VERSION" = "0.5.0" ]; then
+          if [ "$VERSION" = "0.5.1" ]; then
+            TITLE="Reelora v${VERSION} – Executable Music Replacement + Cleaner Beat Cuts"
+          elif [ "$VERSION" = "0.5.0" ]; then
             TITLE="Reelora v${VERSION} – Trend-Inspired Music + Subtle Flash Accents"
           else
             TITLE="Reelora v${VERSION}"
