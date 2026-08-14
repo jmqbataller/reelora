@@ -2,6 +2,53 @@
 
 All notable changes to Reelora are documented here.
 
+## [0.5.1] - 2026-08-14
+
+### Fixed
+
+- Fixed the standalone ChatGPT Skill package not actually carrying the executable Reelora music/transition renderer. The ZIP now includes `scripts/reelora_edit.py` instead of only instructions plus a runtime checker.
+- Fixed default audio replacement behavior so the executable Skill fallback renders source clips without their original audio and maps either user-supplied music or a Reelora-generated trend-inspired instrumental into the final MP4.
+- Added mandatory post-render verification for audio stream presence and `source_audio_replaced: true`.
+- Reworked fashion/ecommerce transitions away from slow/repeated template-style dissolves toward mostly clean beat cuts with rare micro-whip/micro-dip accents.
+- Reworked shot pacing so planned shot durations vary instead of repeating near-identical timing across the Reel.
+- Reduced transition effect durations to roughly 0.025–0.10 seconds for modern social edits.
+- Changed the Skill fallback flash behavior to one restrained short brightness accent in a short Reel rather than repeated flashes.
+
+### Added
+
+- Executable deterministic Skill fallback: `reelora/scripts/reelora_edit.py`.
+- JSON render audit containing output path, duration, BPM, music mood/source, `source_audio_replaced`, and transition timing/type information.
+- Release ZIP verification now requires the executable editor and checks that `manifest.json` points to it.
+
+### Transition direction
+
+The v0.5.1 default philosophy is intentionally cut-driven:
+
+- mostly clean beat cuts;
+- variable shot lengths;
+- occasional micro-motion/whip accent approximately every 5–7 transitions at most;
+- optional very short fade-black/micro-dip;
+- no long repeated fashion dissolves;
+- no obvious effect on every cut.
+
+### Audio behavior
+
+Unless the user explicitly requests silence, original/natural audio, or a synchronized mix, Reelora automatic editing should replace source clip audio with one coherent music bed.
+
+If a music file is supplied, it is used as the final music bed. If no music is supplied, Reelora may generate a sample-free trend-inspired original instrumental.
+
+### Local Skill fallback example
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input raw-1.mp4 \
+  --input raw-2.mp4 \
+  --outro outro.mp4 \
+  --output final.mp4 \
+  --style fashion \
+  --highlight top_wear
+```
+
 ## [0.5.0] - 2026-08-14
 
 ### Added
