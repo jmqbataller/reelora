@@ -7,6 +7,8 @@ on:
       - "package.json"
       - "SKILL.md"
       - "README.md"
+      - "CHANGELOG.md"
+      - "RELEASE_CHECKLIST.md"
       - "docs/**"
       - "skill/**"
       - "src/**"
@@ -40,6 +42,9 @@ jobs:
       - name: Type check backend
         run: npm run check
 
+      - name: Build backend
+        run: npm run build
+
       - name: Build ChatGPT Skill ZIP
         run: npm run pack:skill
 
@@ -47,9 +52,10 @@ jobs:
         run: |
           VERSION=$(node -p "require('./package.json').version")
           ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
-          python3 - "$ZIP" <<'PY'
-          import sys, zipfile
-          archive = sys.argv[1]
+          python3 - "$ZIP" "$VERSION" <<'PY'
+          import json, sys, zipfile
+
+          archive, expected_version = sys.argv[1], sys.argv[2]
           with zipfile.ZipFile(archive) as z:
               names = set(z.namelist())
               required = {
@@ -60,7 +66,42 @@ jobs:
               missing = required - names
               if missing:
                   raise SystemExit(f"Missing required skill files: {sorted(missing)}")
-              print(f"Verified {archive} with {len(names)} files")
+
+              manifest = json.loads(z.read("reelora/manifest.json"))
+              if manifest.get("version") != expected_version:
+                  raise SystemExit(
+                      f"Manifest version {manifest.get('version')} does not match package version {expected_version}"
+                  )
+
+              print(f"Verified {archive} with {len(names)} files; version={expected_version}")
+          PY
+
+      - name: Prepare release notes from changelog
+        run: |
+          VERSION=$(node -p "require('./package.json').version")
+          python3 - "$VERSION" <<'PY'
+          import pathlib, re, sys
+
+          version = sys.argv[1]
+          changelog = pathlib.Path("CHANGELOG.md").read_text(encoding="utf-8")
+          pattern = rf"^## \[{re.escape(version)}\].*?(?=^## \[|\Z)"
+          match = re.search(pattern, changelog, flags=re.MULTILINE | re.DOTALL)
+
+          if match:
+              body = match.group(0).strip()
+          else:
+              body = (
+                  f"## Reelora v{version}\n\n"
+                  "Preservation-first automatic Reel director and ChatGPT Skill.\n"
+              )
+
+          body += (
+              "\n\n### Download\n\n"
+              f"Download `reelora-skill-v{version}.zip` from the release assets and upload/install it "
+              "from the ChatGPT Skills interface available to your account/workspace.\n"
+          )
+          pathlib.Path("/tmp/reelora-release-notes.md").write_text(body, encoding="utf-8")
+          print(body)
           PY
 
       - name: Create or update GitHub Release
@@ -70,47 +111,19 @@ jobs:
           VERSION=$(node -p "require('./package.json').version")
           TAG="v${VERSION}"
           ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
-          cat > /tmp/reelora-release-notes.md <<EOF
-          # Reelora v${VERSION}
 
-          Preservation-first automatic Reel director and ChatGPT Skill.
-
-          ## Highlights
-          - raw videos + supplied ending/outro → automatic Reel workflow
-          - automatic premium music replacement when no song is supplied
-          - verified local music-library selection with explicit commercial-use rights metadata
-          - sample-free procedural Reelora Original Beat fallback with style-aware BPM
-          - beat-aware pacing that nudges shot timing toward the selected BPM without overriding product/framing rules
-          - final music loudness normalization plus clean audio fade-in/fade-out
-          - premium style-aware FFmpeg transition engine using real source pixels only
-          - premium, luxury, fashion, cinematic, minimal, fast-ecommerce, and clean-commercial transition personalities
-          - best-moment selection, cutting, rearrangement, safe crop/reframe
-          - exact/custom product shot distributions, including 70/20/10 top-wear default
-          - expanded Vision Director observations for product, model, logo, print, fabric, pose, variant, SKU, visibility, occlusion, blur, movement and confidence
-          - reference-product/model/SKU architecture and preservation guards
-          - reference-Reel editing-DNA analysis that copies pacing/structure only, never logos/text/music/assets
-          - structured revision controls: lock/unlock/replace/blacklist/favorite/edit-region
-          - product color, fabric texture, logo/print, face, hand, body-shape and crop integrity guards
-          - timeline JSON, CSV and CMX-style EDL exports
-          - quality report, edit-plan JSON, thumbnail/cover and FFmpeg audit
-          - A/B Reel variants, batch editing, saved brand profiles and campaign hooks
-          - runtime diagnostics for FFmpeg/FFprobe and H.264 encoders
-          - local/offline/desktop/watch-folder/queue/cache architecture hooks
-          - CPU H.264 plus optional NVIDIA NVENC, Intel QSV and AMD AMF
-          - strict no-generative mode
-          - no overlay text, no overlay objects, no AI voice-over
-
-          Music-rights note: Reelora does not label random internet audio as copyright-free. Automatic library tracks require explicit rights metadata; the original-beat fallback contains no third-party recording/sample, but Reelora does not make a universal legal guarantee about copyright status in every jurisdiction.
-
-          Download **reelora-skill-v${VERSION}.zip** and upload it from ChatGPT's Skills interface when Skill uploads are available for your account/workspace.
-          EOF
+          if [ "$VERSION" = "0.5.0" ]; then
+            TITLE="Reelora v${VERSION} – Trend-Inspired Music + Subtle Flash Accents"
+          else
+            TITLE="Reelora v${VERSION}"
+          fi
 
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$ZIP" --clobber
-            gh release edit "$TAG" --title "Reelora v${VERSION}" --notes-file /tmp/reelora-release-notes.md
+            gh release edit "$TAG" --title "$TITLE" --notes-file /tmp/reelora-release-notes.md
           else
             gh release create "$TAG" "$ZIP" \
               --target "$GITHUB_SHA" \
-              --title "Reelora v${VERSION}" \
+              --title "$TITLE" \
               --notes-file /tmp/reelora-release-notes.md
           fi
