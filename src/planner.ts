@@ -58,23 +58,23 @@ function countsForDistribution(distribution: ShotDistribution, slots = 10): Reco
 
 function interleavedPattern(counts: Record<ShotType, number>): ShotType[] {
   const remaining = { ...counts };
-  const pattern: ShotType[] = [];
-  const preferred: ShotType[] = ["focus", "focus", "whole_body", "focus", "detail", "focus", "whole_body", "focus", "detail", "focus"];
+  const pattern: ShotType[] = ["focus", "focus", "whole_body", "focus", "detail", "focus", "whole_body", "focus", "detail", "focus"];
+  const output: ShotType[] = [];
 
-  for (const type of preferred) {
+  for (const type of pattern) {
     if (remaining[type] > 0) {
-      pattern.push(type);
+      output.push(type);
       remaining[type] -= 1;
     }
   }
 
   for (const type of ["focus", "whole_body", "detail"] as ShotType[]) {
     while (remaining[type] > 0) {
-      pattern.push(type);
+      output.push(type);
       remaining[type] -= 1;
     }
   }
-  return pattern;
+  return output;
 }
 
 function candidateRank(candidate: CandidateSegment, shotType: ShotType, used: CandidateSegment[], options: ReeloraAdvancedOptions): number {
@@ -132,23 +132,42 @@ function maximumSafeTotal(
   return caps.length ? Math.min(...caps) : 0;
 }
 
+const RHYTHM_WEIGHTS = [1.25, 0.72, 1.0, 1.48, 0.68, 1.18, 0.78, 1.3, 0.72, 1.08];
+
 function plannedDurationFor(
   type: ShotType,
+  index: number,
   total: number,
   distribution: ShotDistribution,
-  counts: Record<ShotType, number>,
+  selected: Array<CandidateSegment & { shotType: ShotType }>,
 ): number {
   const share = type === "focus" ? distribution.focus : type === "whole_body" ? distribution.wholeBody : distribution.detail;
-  return counts[type] > 0 ? (total * share) / counts[type] : 0;
+  const weight = RHYTHM_WEIGHTS[index % RHYTHM_WEIGHTS.length];
+  const typeWeightTotal = selected.reduce((sum, shot, shotIndex) => (
+    shot.shotType === type ? sum + RHYTHM_WEIGHTS[shotIndex % RHYTHM_WEIGHTS.length] : sum
+  ), 0);
+  if (share <= 0 || typeWeightTotal <= 0) return 0;
+  return total * share * (weight / typeWeightTotal);
 }
 
 function transitionFor(index: number, options: ReeloraAdvancedOptions): PlannedShot["transition"] {
   if (index === 0) return "cut";
   const mode = options.transitionMode ?? STYLE_PROFILES[options.style ?? "premium"].transitionMode;
   if (mode === "cuts") return "cut";
-  if (mode === "soft") return index % 3 === 0 ? "dissolve" : "fade";
-  if (mode === "motion") return index % 3 === 0 ? "motion" : "cut";
-  return index % 4 === 0 ? "dissolve" : index % 3 === 0 ? "fade" : "cut";
+  if (mode === "soft") return index % 5 === 0 ? "fade" : "cut";
+  if (mode === "motion") return index % 5 === 0 ? "motion" : "cut";
+
+  const style = options.style ?? "premium";
+  if (style === "fashion" || style === "fast_ecommerce") {
+    if (index % 7 === 0) return "dissolve";
+    if (index % 5 === 0) return "motion";
+    return "cut";
+  }
+  if (style === "luxury" || style === "cinematic") return index % 5 === 0 ? "dissolve" : "cut";
+  if (style === "minimal") return index % 6 === 0 ? "fade" : "cut";
+  if (index % 6 === 0) return "motion";
+  if (index % 5 === 0) return "fade";
+  return "cut";
 }
 
 function beatFriendlyTotal(total: number, bpm: number | undefined, slots: number): number {
@@ -158,7 +177,6 @@ function beatFriendlyTotal(total: number, bpm: number | undefined, slots: number
   const targetPerShot = total / slots;
   const snappedPerShot = Math.max(halfBeat * 2, Math.round(targetPerShot / halfBeat) * halfBeat);
   const snappedTotal = snappedPerShot * slots;
-  // Do not let beat alignment materially override the user's requested duration.
   return Math.abs(snappedTotal - total) / total <= 0.12 ? snappedTotal : total;
 }
 
@@ -198,12 +216,15 @@ export function buildEditPlan(args: {
   const safeTotal = maximumSafeTotal(selected, distribution);
   const actualTotal = Math.min(requestedTotal, safeTotal || requestedTotal);
 
-  const shots: PlannedShot[] = selected.map((shot, index) => ({
-    ...shot,
-    targetDuration: Number(plannedDurationFor(shot.shotType, actualTotal, distribution, counts).toFixed(3)),
-    transition: transitionFor(index, options),
-    playbackRate: options.slowMotionFromHighFps && shot.reasons.includes("high-frame-rate") && index % 4 === 2 ? 0.8 : 1,
-  }));
+  const shots: PlannedShot[] = selected.map((shot, index) => {
+    const desired = plannedDurationFor(shot.shotType, index, actualTotal, distribution, selected);
+    return {
+      ...shot,
+      targetDuration: Number(Math.min(shot.duration * 0.98, desired).toFixed(3)),
+      transition: transitionFor(index, options),
+      playbackRate: options.slowMotionFromHighFps && shot.reasons.includes("high-frame-rate") && index % 4 === 2 ? 0.8 : 1,
+    };
+  });
 
   const plannedDuration = shots.reduce((sum, shot) => sum + shot.targetDuration, 0);
   if (plannedDuration <= 0) throw new Error("Unable to construct a non-empty edit plan.");
