@@ -1,8 +1,8 @@
 {
   "name": "reelora",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "private": false,
-  "description": "Preservation-first automatic Reel director with premium auto-music, beat-aware pacing, FFmpeg transitions, MCP/ChatGPT skill adapter, and advanced product-video editing architecture.",
+  "description": "Preservation-first automatic Reel director with trend-inspired auto-music, beat-aware pacing, restrained flash accents, FFmpeg transitions, MCP/ChatGPT skill adapter, and advanced product-video editing architecture.",
   "type": "module",
   "engines": {
     "node": ">=20"
