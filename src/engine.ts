@@ -149,6 +149,7 @@ export async function editReel(request: EditRequest) {
       suppliedMusicPath,
       workDir: inputDir,
       style: options.style ?? "premium",
+      highlight: request.highlight,
       autoMusic: true,
     });
     const musicPath = musicSelection?.path;
