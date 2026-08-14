@@ -1,9 +1,9 @@
 ---
 name: reelora
-description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, add clean transitions/fade in/fade out, optionally sync supplied music, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
+description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, add clean transitions/fade in/fade out and restrained flash accents, automatically use trend-inspired original or verified commercial-safe music when no track is supplied, sync edits to music, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
 ---
 
-# Reelora v0.3
+# Reelora v0.4
 
 ## Core workflow
 
@@ -15,13 +15,13 @@ Do not require manual timestamps or clip selection unless the user asks for manu
 
 Preferred workflow:
 
-`inspect → score moments → reject weak/duplicate/obstructed footage → build shot plan → enforce requested product distribution → safe crop/reframe/track → clean transitions/fades → optional supplied-music sync → preservation QA → supplied outro → export Reel + reports/timelines`
+`inspect → score moments → reject weak/duplicate/obstructed footage → build shot plan → enforce requested product distribution → safe crop/reframe/track → clean transitions/fades + restrained flash accents → trend-inspired or supplied-music sync → preservation QA → supplied outro → export Reel + reports/timelines`
 
 ## Absolute preservation rules
 
 Preserve the exact original model/person, face, skin tone, hairstyle, body proportions, hands, pose, product, fabric, texture, weave/ribbing, folds, shine, product color, print, logo, tags, neckline, sleeves, straps, pockets, stitching, length, fit, and construction.
 
-Never generate, reconstruct, replace, redesign, outpaint, or hallucinate missing visual content. Cropping, scaling, trimming, reframing, deterministic stabilization, conservative technical color correction, fades, cuts, and transitions are allowed. When enhancement conflicts with preservation, preservation wins.
+Never generate, reconstruct, replace, redesign, outpaint, or hallucinate missing visual content. Cropping, scaling, trimming, reframing, deterministic stabilization, conservative technical color correction, fades, cuts, transitions, restrained brightness flash accents, and music generation are allowed. When enhancement conflicts with preservation, preservation wins.
 
 ## Hard prohibited additions
 
@@ -71,13 +71,23 @@ Reject or strongly de-prioritize severe blur, unusable shake, duplicate framing,
 
 Supported style directions include premium, minimal, fashion, fast ecommerce, cinematic, luxury, and clean commercial.
 
-Allowed techniques include clean cuts, short fades/dissolves, fade in/out, match-style cuts, source-supported motion transitions, subtle real-pixel crop motion, product-safe punch-in/out, high-FPS slow motion, and supplied-music beat alignment.
+Allowed techniques include clean cuts, short fades/dissolves, fade in/out, match-style cuts, source-supported motion transitions, subtle real-pixel crop motion, product-safe punch-in/out, high-FPS slow motion, music beat alignment, and sparse low-brightness flash accents around selected transition moments.
+
+Flash accents must remain restrained: never use rapid strobing, repeated full-white frames, aggressive flicker, or effects that reduce product readability. Product clarity has higher priority than transition complexity.
 
 Do not overuse effects. Product clarity has higher priority than transition complexity.
 
-## Audio
+## Audio and trend-inspired music
 
-Use supplied music only. Do not claim licensing rights. Reelora may trim/loop supplied music, align useful beats/energy changes, land the supplied outro naturally, preserve useful original/natural sounds when supported, and avoid awkward silence cuts. Never generate speech or voice-over.
+If the user supplies music, use it as provided and do not claim licensing rights.
+
+If the user does not supply music, Reelora may automatically choose a track from a locally configured verified commercial-use library. If no verified track is available, Reelora may generate a sample-free, trend-inspired original instrumental rather than falling back to a generic single loop.
+
+Trend-inspired original directions include viral fashion, luxury runway, clean pop, Y2K pop, phonk-lite, UK garage, jersey club, afrobeat-inspired, dreamy viral, dark streetwear, and commercial pop. These are style inspirations only: do not copy, imitate, bundle, or claim to reproduce a specific TikTok song, copyrighted recording, melody, or third-party sample.
+
+The original music engine may use multiple sections such as intro, build, drop, break, and final lift so shot changes can feel intentional. Reelora may trim/loop music, align useful beats and energy changes, land the supplied outro naturally, preserve useful original/natural sounds when supported, and avoid awkward silence cuts.
+
+Never generate speech or voice-over.
 
 ## Integrity guards
 
