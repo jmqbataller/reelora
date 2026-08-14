@@ -1,9 +1,9 @@
 ---
 name: reelora
-description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, add clean transitions/fade in/fade out and restrained flash accents, automatically use trend-inspired original or verified commercial-safe music when no track is supplied, sync edits to music, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
+description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, replace inconsistent source audio with trend-inspired original or verified commercial-safe music, use mostly clean beat cuts with restrained micro-transitions/flash accents, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
 ---
 
-# Reelora v0.5
+# Reelora v0.5.1
 
 ## Core workflow
 
@@ -15,7 +15,31 @@ Do not require manual timestamps or clip selection unless the user asks for manu
 
 Preferred workflow:
 
-`inspect → score moments → reject weak/duplicate/obstructed footage → build shot plan → enforce requested product distribution → safe crop/reframe/track → clean transitions/fades + restrained flash accents → trend-inspired or supplied-music sync → preservation QA → supplied outro → export Reel + reports/timelines`
+`inspect → score moments → reject weak/duplicate/obstructed footage → build varied beat-aware shot plan → enforce requested product distribution → safe crop/reframe/track → mostly clean beat cuts + sparse micro-transition/flash accents → replace source audio with trend-inspired or supplied music → preservation QA → supplied outro → verify rendered audio/video → export Reel + reports/timelines`
+
+## Mandatory execution rule
+
+When the user asks Reelora to actually edit uploaded videos, instructions alone are not completion. Reelora must use an executable rendering path when one is available.
+
+Execution priority:
+
+1. Prefer the Reelora MCP `reelora_edit` tool when connected.
+2. Otherwise, if FFmpeg/FFprobe and Python are available, run the bundled `scripts/reelora_edit.py` deterministic fallback.
+3. Only if neither executable path exists may Reelora return an edit plan instead of a finished MP4. Never pretend that music replacement, transitions, or rendering occurred when they did not.
+
+For the bundled fallback, the normal shape is:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input RAW_1.mp4 \
+  --input RAW_2.mp4 \
+  --outro OUTRO.mp4 \
+  --output FINAL.mp4 \
+  --style fashion \
+  --highlight top_wear
+```
+
+When the user supplied a music file, add `--music MUSIC_FILE`. When no music is supplied, the script creates Reelora original trend-inspired instrumental audio and maps that audio into the final MP4.
 
 ## Absolute preservation rules
 
@@ -67,27 +91,51 @@ Prefer strong requested-product visibility, sharpness, lighting, stability, moti
 
 Reject or strongly de-prioritize severe blur, unusable shake, duplicate framing, obstructed product views, awkward setup frames, poor exposure when alternatives exist, distracting/mirror-risk footage, and shots requiring invented pixels.
 
-## Editing behavior
+## Modern transition and pacing rules
 
-Supported style directions include premium, minimal, fashion, fast ecommerce, cinematic, luxury, and clean commercial.
+The default social/fashion edit must not look like a slideshow or a transition template.
 
-Allowed techniques include clean cuts, short fades/dissolves, fade in/out, match-style cuts, source-supported motion transitions, subtle real-pixel crop motion, product-safe punch-in/out, high-FPS slow motion, music beat alignment, and sparse low-brightness flash accents around selected transition moments.
+Use these priorities:
 
-Flash accents must remain restrained: never use rapid strobing, repeated full-white frames, aggressive flicker, or effects that reduce product readability. Product clarity has higher priority than transition complexity.
+- mostly clean cuts aligned to useful beats;
+- variable shot lengths instead of repeating the same duration for every shot;
+- fast detail cuts may be about 0.6–1.0 seconds;
+- normal product/focus shots may be about 0.9–1.7 seconds;
+- hero/product-hold shots may be about 1.5–2.6 seconds when the footage supports it;
+- use a micro motion/whip accent only occasionally, roughly every 5–7 transitions at most;
+- use very short fade/dip transitions, generally around 0.04–0.10 seconds;
+- avoid long dissolves, repeated left/right wipes, and identical transition patterns;
+- do not put a visible effect on every cut.
 
-Do not overuse effects. Product clarity has higher priority than transition complexity.
+Fashion and fast-ecommerce should feel cut-driven, not dissolve-driven. Luxury/cinematic may use a slightly softer micro-dip, but still keep effects short.
+
+Flash accents are optional accents only. Prefer a single restrained flash around a strong beat/drop in a short Reel. Never use rapid strobing, repeated full-white frames, aggressive flicker, or flash effects that reduce product readability.
 
 ## Audio and trend-inspired music
 
-If the user supplies music, use it as provided and do not claim licensing rights.
+Unless the user explicitly requests silence, original/natural sound, or a synchronized mix, the automatic product/fashion workflow MUST replace/ignore source clip audio and create one coherent music bed.
 
-If the user does not supply music, Reelora may automatically choose a track from a locally configured verified commercial-use library. If no verified track is available, Reelora may generate a sample-free, trend-inspired original instrumental rather than falling back to a generic single loop.
+If the user supplies music, use that music file and do not claim licensing rights.
+
+If the user does not supply music, Reelora should first use a configured verified commercial-use library when available. If no verified track is available, use the sample-free Reelora original trend-inspired instrumental fallback.
 
 Trend-inspired original directions include viral fashion, luxury runway, clean pop, Y2K pop, phonk-lite, UK garage, jersey club, afrobeat-inspired, dreamy viral, dark streetwear, and commercial pop. These are style inspirations only: do not copy, imitate, bundle, or claim to reproduce a specific TikTok song, copyrighted recording, melody, or third-party sample.
 
-The original music engine may use multiple sections such as intro, build, drop, break, and final lift so shot changes can feel intentional. Reelora may trim/loop music, align useful beats and energy changes, land the supplied outro naturally, preserve useful original/natural sounds when supported, and avoid awkward silence cuts.
+For top-wear fashion edits, favor a viral-fashion direction around 120–126 BPM unless the footage or user direction indicates another style. Logo/print streetwear edits may lean darker; fabric/detail edits may lean cleaner/softer.
 
-Never generate speech or voice-over.
+The original music engine may use intro, build, drop, break, and final-lift behavior. Never generate speech or voice-over.
+
+## Mandatory render verification
+
+After producing a finished MP4, verify it rather than assuming the requested edit happened.
+
+At minimum:
+
+1. Probe the final MP4 with FFprobe and confirm it contains both a video stream and an audio stream when music was requested/defaulted.
+2. When using `scripts/reelora_edit.py`, check its JSON result and require `source_audio_replaced: true` for the default automatic workflow.
+3. Confirm the reported `music_source` is `reelora-original` or `user-supplied` as appropriate.
+4. Check that transition timing is mostly beat/clean cuts and not a uniform repeated long dissolve pattern.
+5. If any of these checks fail, treat the render as failed and re-render/fix the pipeline rather than presenting it as complete.
 
 ## Integrity guards
 
@@ -153,7 +201,7 @@ Prefer Reelora MCP tools when available:
 - `reelora_revise_plan` — targeted structured revisions
 - `reelora_save_brand_profile` / `reelora_list_brand_profiles` — persistent presets
 
-If advanced hardware/vision capabilities are unavailable, use the deterministic FFmpeg fallback rather than pretending a capability ran.
+If MCP is unavailable, run `scripts/check_reelora_runtime.py`. If it reports local FFmpeg rendering ready, use `scripts/reelora_edit.py`; do not stop at an edit plan when the local executable path is available.
 
 ## Capability status
 
