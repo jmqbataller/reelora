@@ -12,32 +12,78 @@ Upload raw clips + a supplied ending/outro and give a short direction such as:
 Make these into a quality Reel. Highlight the top wear.
 ```
 
-Reelora handles clip selection, cutting, rearrangement, product-focused reframing, pacing, trend-inspired automatic music, beat-aware timing, clean transitions, restrained flash accents, fade in/out, supplied-outro placement, validation, timeline/report exports, and final MP4 rendering without generating or replacing the original model, product, or fabric.
+Reelora handles clip selection, cutting, rearrangement, product-focused reframing, variable beat-aware pacing, automatic music replacement, mostly clean social-style cuts, sparse micro-transitions/flash accents, supplied-outro placement, validation, timeline/report exports, and final MP4 rendering without generating or replacing the original model, product, or fabric.
 
 ## Download the ChatGPT Skill
 
-### Latest: Reelora v0.5.0
+### Latest: Reelora v0.5.1
 
-**[Download Reelora Skill v0.5.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.5.0/reelora-skill-v0.5.0.zip)**
+**[Download Reelora Skill v0.5.1 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.5.1/reelora-skill-v0.5.1.zip)**
 
 Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
-The ZIP is built automatically from this repository and contains a top-level `reelora/` skill folder with `SKILL.md`, manifest metadata, references, and non-destructive runtime helper scripts.
+The ZIP contains a top-level `reelora/` Skill folder with `SKILL.md`, references, manifest metadata, a runtime checker, and the executable deterministic fallback editor `scripts/reelora_edit.py`.
 
 Release history: [`CHANGELOG.md`](./CHANGELOG.md)
 
 Release verification steps: [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
 
-## v0.5.0 highlights
+## v0.5.1 — executable music replacement + cleaner beat cuts
 
-Reelora v0.5.0 improves automatic soundtrack quality and adds restrained visual accents while keeping preservation rules strict.
+v0.5.1 fixes the main problem discovered in the v0.5.0 standalone Skill package: the ZIP previously contained instructions and a runtime checker, but not the actual Reelora editor/music renderer.
 
-### Trend-inspired automatic music
+The latest Skill ZIP now includes:
+
+```text
+reelora/scripts/check_reelora_runtime.py
+reelora/scripts/reelora_edit.py
+```
+
+When Reelora MCP is unavailable but Python + FFmpeg + FFprobe are available, the Skill can run the bundled editor instead of only describing what should happen.
+
+### Audio replacement is now verifiable
+
+Unless the user explicitly asks for silence, original/natural sound, or a synchronized mix, the automatic product/fashion workflow should strip/ignore raw clip audio and use one coherent music bed.
+
+- supplied song → use the supplied music file;
+- no supplied song → generate a sample-free trend-inspired Reelora original instrumental;
+- final render → verify an audio stream exists and require `source_audio_replaced: true` from the executable fallback audit.
+
+The renderer reports metadata such as:
+
+```json
+{
+  "music_source": "reelora-original",
+  "music_mood": "viral-fashion",
+  "bpm": 124,
+  "source_audio_replaced": true
+}
+```
+
+### Cleaner transition direction
+
+Reelora v0.5.1 is intentionally **cut-driven rather than transition-driven**.
+
+Default direction:
+
+- mostly clean beat cuts;
+- variable shot lengths instead of repeated equal-duration clips;
+- quick detail shots around 0.6–1.0s when appropriate;
+- normal product/focus shots around 0.9–1.7s;
+- longer hero/product holds around 1.5–2.6s when footage supports them;
+- rare micro-whip/motion accents, roughly every 5–7 transitions at most;
+- very short fade/dip accents, generally about 0.04–0.10s;
+- no long repeated fashion dissolves;
+- no obvious transition effect on every cut.
+
+For short Reels, flash should normally be zero or one small brightness accent around a stronger beat/drop rather than repeated flashes.
+
+## Trend-inspired automatic music
 
 When the user does not supply music, Reelora can:
 
 1. prefer a locally configured verified commercial-use music library, or
-2. generate a sample-free Reelora original instrumental as the fallback.
+2. generate a sample-free Reelora original instrumental.
 
 Original directions include:
 
@@ -55,29 +101,7 @@ Original directions include:
 
 These are style inspirations only. Reelora does not bundle or claim to reproduce a specific TikTok song, copyrighted recording, melody, or third-party sample.
 
-Music selection can use both the requested editing style and product highlight, so fashion/top-wear, logo/print, fabric/detail, ecommerce, luxury, and other edit intents can receive a more appropriate vibe.
-
-### Restrained flash accents
-
-Selected transitions may receive a short, low-brightness flash lift for a more current Reels/TikTok-inspired editing feel.
-
-The effect is deliberately limited:
-
-- sparse rather than every transition
-- small brightness lift instead of full-white frames
-- no rapid strobing
-- no repeated aggressive flicker
-- product readability remains higher priority than the effect
-
-Runtime controls are documented in `.env.example`:
-
-```env
-REELORA_AUTO_MUSIC=1
-REELORA_MUSIC_LIBRARY=
-REELORA_SUBTLE_FLASH=1
-REELORA_FLASH_CADENCE=5
-REELORA_FLASH_STRENGTH=0.10
-```
+Music selection can use both editing style and product highlight. Top-wear fashion edits can favor a viral-fashion direction; logo/print streetwear can lean darker; fabric/detail can lean cleaner/softer.
 
 ## Preservation rules
 
@@ -104,6 +128,40 @@ Total = **100%**.
 
 User-supplied distributions override this default. Example: `80% top wear, 20% whole body` becomes focus 80%, whole body 20%, detail 0%.
 
+## Executable Skill fallback
+
+Requirements:
+
+- Python 3
+- FFmpeg
+- FFprobe
+
+Example:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input raw-1.mp4 \
+  --input raw-2.mp4 \
+  --outro outro.mp4 \
+  --output final.mp4 \
+  --style fashion \
+  --highlight top_wear
+```
+
+With a supplied song:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input raw-1.mp4 \
+  --outro outro.mp4 \
+  --music music.mp3 \
+  --output final.mp4 \
+  --style fashion \
+  --highlight top_wear
+```
+
+The script prints a JSON audit with music source, BPM, output duration, source-audio replacement status, and transition timing/type data.
+
 ## Capability status is explicit
 
 Call the MCP tool:
@@ -117,8 +175,6 @@ It returns every capability with one of these statuses:
 - `implemented` — executable in the current backend/MCP layer
 - `adapter_ready` — typed contract exists but needs an observation/provider/desktop/audio adapter to execute fully
 - `planned` — product architecture item that still needs dedicated implementation
-
-This prevents clients from claiming a desktop/local-vision capability ran when it did not.
 
 ## Current MCP tools
 
@@ -134,43 +190,15 @@ This prevents clients from claiming a desktop/local-vision capability ran when i
 
 ## Vision Director architecture
 
-The deterministic core may consume normalized observations from a local or remote vision layer, including:
-
-- product, face, hand, full-body, logo, print, and fabric regions
-- pose/angle
-- variant/SKU label
-- product/logo/print visibility
-- fabric detail score
-- blur/occlusion
-- movement quality
-- distraction/reflection risk
-- confidence
+The deterministic core may consume normalized observations from a local or remote vision layer, including product, face, hand, full-body, logo, print, fabric, pose/angle, variant/SKU, visibility, blur/occlusion, movement quality, distraction/reflection risk, and confidence.
 
 Vision analysis controls selection/crop decisions only. It must never generate replacement product/model pixels.
 
 ## Reference Reel style matching
 
-Reelora may derive structural editing DNA such as:
-
-- average shot length
-- opening shot length
-- shot distribution
-- transition frequency
-- motion intensity
+Reelora may derive structural editing DNA such as average shot length, opening shot length, shot distribution, transition frequency, and motion intensity.
 
 It must **not** copy the reference Reel's logos, text, music, brand assets, or other protected creative content.
-
-## Revision workflow
-
-Targeted plan revisions are supported at the architecture/MCP level:
-
-- lock/unlock a shot
-- replace a shot
-- blacklist a source time window
-- favorite a source moment
-- limit editing to a requested output time region
-
-This is designed so a user can say things like `keep the opening and outro; only change the middle` without discarding the whole plan.
 
 ## Exports
 
@@ -187,15 +215,13 @@ Current/contracted exports include:
 - FFmpeg command audit
 - versioned output filenames
 
-The backend supports optional H.264 hardware encoder selection with CPU `libx264` fallback.
-
 ## Install backend locally
 
 Requirements:
 
 - Node.js 20+
 - FFmpeg + FFprobe on `PATH`
-- Python 3 for ZIP packaging
+- Python 3 for Skill ZIP packaging/fallback rendering
 
 ```bash
 git clone https://github.com/jmqbataller/reelora.git
@@ -227,7 +253,7 @@ GET  /outputs/<generated-file>
 
 ## Build the installable Skill ZIP locally
 
-From the repository root, run exactly:
+From the repository root:
 
 ```bash
 npm install
@@ -236,33 +262,19 @@ npm run build
 npm run pack:skill
 ```
 
-For v0.5.0 the generated file is:
+For v0.5.1 the generated file is:
 
 ```text
-dist-skill/reelora-skill-v0.5.0.zip
+dist-skill/reelora-skill-v0.5.1.zip
 ```
 
-If dependencies are already installed and you only need to rebuild the skill package, the shortest command is:
+If dependencies are already installed and you only need to rebuild the Skill package:
 
 ```bash
 npm run pack:skill
 ```
 
-The packaging script reads the version from `package.json`, creates the top-level `reelora/` skill directory, generates `manifest.json`, and packages it as `dist-skill/reelora-skill-v<version>.zip`.
-
-The GitHub Release workflow performs the same build, verifies the ZIP structure, and attaches the versioned ZIP to the matching release.
-
-## Release checklist
-
-Before publishing a release, follow [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md). The main release checks are:
-
-- version, README, changelog, and skill instructions agree
-- TypeScript check/build passes
-- versioned Skill ZIP is generated
-- required ZIP files are present
-- automatic music and restrained flash behavior are smoke-tested
-- GitHub Release workflow passes
-- release asset can be downloaded and installed in ChatGPT Skills
+The GitHub Release workflow performs the same build, verifies the ZIP contains `reelora/scripts/reelora_edit.py`, checks the manifest version/executable pointer, and attaches the versioned ZIP to the release.
 
 ## Project structure
 
@@ -273,30 +285,18 @@ reelora/
 ├── CHANGELOG.md
 ├── RELEASE_CHECKLIST.md
 ├── docs/
-│   ├── FEATURES.md
-│   ├── ARCHITECTURE.md
-│   ├── EDITING_RULES.md
-│   ├── PRESERVATION.md
-│   └── SHOT_DISTRIBUTION.md
+├── skill/
+│   ├── README.md
+│   ├── references/
+│   └── scripts/
+│       ├── check_reelora_runtime.py
+│       └── reelora_edit.py
 ├── src/
-│   ├── analyze.ts
-│   ├── diagnostics.ts
-│   ├── engine.ts
-│   ├── feature-catalog.ts
-│   ├── features.ts
-│   ├── ffmpeg.ts
-│   ├── mcp.ts
 │   ├── music.ts
 │   ├── planner.ts
-│   ├── quality.ts
 │   ├── render.ts
-│   ├── revisions.ts
-│   ├── style-reference.ts
-│   ├── timeline.ts
 │   ├── transitions.ts
-│   ├── types.ts
-│   ├── validation.ts
-│   └── vision.ts
+│   └── ...
 ├── scripts/
 │   └── build-skill-package.mjs
 └── .github/workflows/
