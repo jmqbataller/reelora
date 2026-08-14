@@ -12,15 +12,72 @@ Upload raw clips + a supplied ending/outro and give a short direction such as:
 Make these into a quality Reel. Highlight the top wear.
 ```
 
-Reelora handles clip selection, cutting, rearrangement, product-focused reframing, pacing, transitions, fade in/out, supplied-outro placement, validation, timeline/report exports, and final MP4 rendering without generating or replacing the original model, product, or fabric.
+Reelora handles clip selection, cutting, rearrangement, product-focused reframing, pacing, trend-inspired automatic music, beat-aware timing, clean transitions, restrained flash accents, fade in/out, supplied-outro placement, validation, timeline/report exports, and final MP4 rendering without generating or replacing the original model, product, or fabric.
 
 ## Download the ChatGPT Skill
 
-**[Download Reelora Skill v0.3.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.3.0/reelora-skill-v0.3.0.zip)**
+### Latest: Reelora v0.5.0
+
+**[Download Reelora Skill v0.5.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.5.0/reelora-skill-v0.5.0.zip)**
 
 Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
-The ZIP is built automatically from this repository and contains a top-level `reelora/` skill folder with `SKILL.md`, references, and a non-destructive runtime checker.
+The ZIP is built automatically from this repository and contains a top-level `reelora/` skill folder with `SKILL.md`, manifest metadata, references, and non-destructive runtime helper scripts.
+
+Release history: [`CHANGELOG.md`](./CHANGELOG.md)
+
+Release verification steps: [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+
+## v0.5.0 highlights
+
+Reelora v0.5.0 improves automatic soundtrack quality and adds restrained visual accents while keeping preservation rules strict.
+
+### Trend-inspired automatic music
+
+When the user does not supply music, Reelora can:
+
+1. prefer a locally configured verified commercial-use music library, or
+2. generate a sample-free Reelora original instrumental as the fallback.
+
+Original directions include:
+
+- viral fashion
+- luxury runway
+- clean pop
+- Y2K pop
+- phonk-lite
+- UK garage
+- Jersey Club
+- afrobeat-inspired
+- dreamy viral
+- dark streetwear
+- commercial pop
+
+These are style inspirations only. Reelora does not bundle or claim to reproduce a specific TikTok song, copyrighted recording, melody, or third-party sample.
+
+Music selection can use both the requested editing style and product highlight, so fashion/top-wear, logo/print, fabric/detail, ecommerce, luxury, and other edit intents can receive a more appropriate vibe.
+
+### Restrained flash accents
+
+Selected transitions may receive a short, low-brightness flash lift for a more current Reels/TikTok-inspired editing feel.
+
+The effect is deliberately limited:
+
+- sparse rather than every transition
+- small brightness lift instead of full-white frames
+- no rapid strobing
+- no repeated aggressive flicker
+- product readability remains higher priority than the effect
+
+Runtime controls are documented in `.env.example`:
+
+```env
+REELORA_AUTO_MUSIC=1
+REELORA_MUSIC_LIBRARY=
+REELORA_SUBTLE_FLASH=1
+REELORA_FLASH_CADENCE=5
+REELORA_FLASH_STRENGTH=0.10
+```
 
 ## Preservation rules
 
@@ -46,26 +103,6 @@ Default `Highlight the top wear` content distribution before the supplied outro:
 Total = **100%**.
 
 User-supplied distributions override this default. Example: `80% top wear, 20% whole body` becomes focus 80%, whole body 20%, detail 0%.
-
-## v0.3 additions
-
-Reelora v0.3 expands the working v0.2 renderer into a broader, typed architecture without pretending every external vision/desktop integration already exists.
-
-New working/core additions include:
-
-- comprehensive capability catalog with `implemented`, `adapter_ready`, and `planned` status
-- expanded vision observation schema for product/face/hands/body/logo/print/fabric/pose/variant/SKU signals
-- reference-product/model/SKU architecture
-- reference-Reel editing-DNA analysis (pacing/shot structure only; no copying creative assets)
-- structured revision commands: lock/unlock/replace/blacklist/favorite/edit-region
-- runtime FFmpeg/FFprobe/encoder diagnostics
-- timeline JSON export
-- timeline CSV export
-- basic CMX-style EDL export
-- campaign/review/offline/desktop/runtime hooks
-- expanded preservation/QA contracts
-
-See [`docs/FEATURES.md`](./docs/FEATURES.md) for the complete feature inventory and [`docs/ARCHITECTURE.md`](./docs/ARCHITECTURE.md) for the layer design.
 
 ## Capability status is explicit
 
@@ -158,6 +195,7 @@ Requirements:
 
 - Node.js 20+
 - FFmpeg + FFprobe on `PATH`
+- Python 3 for ZIP packaging
 
 ```bash
 git clone https://github.com/jmqbataller/reelora.git
@@ -187,13 +225,44 @@ GET  /health
 GET  /outputs/<generated-file>
 ```
 
-## Build the installable Skill ZIP
+## Build the installable Skill ZIP locally
+
+From the repository root, run exactly:
+
+```bash
+npm install
+npm run check
+npm run build
+npm run pack:skill
+```
+
+For v0.5.0 the generated file is:
+
+```text
+dist-skill/reelora-skill-v0.5.0.zip
+```
+
+If dependencies are already installed and you only need to rebuild the skill package, the shortest command is:
 
 ```bash
 npm run pack:skill
 ```
 
-The generated file is placed under `dist-skill/` and the GitHub Release workflow publishes the same versioned ZIP automatically.
+The packaging script reads the version from `package.json`, creates the top-level `reelora/` skill directory, generates `manifest.json`, and packages it as `dist-skill/reelora-skill-v<version>.zip`.
+
+The GitHub Release workflow performs the same build, verifies the ZIP structure, and attaches the versioned ZIP to the matching release.
+
+## Release checklist
+
+Before publishing a release, follow [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md). The main release checks are:
+
+- version, README, changelog, and skill instructions agree
+- TypeScript check/build passes
+- versioned Skill ZIP is generated
+- required ZIP files are present
+- automatic music and restrained flash behavior are smoke-tested
+- GitHub Release workflow passes
+- release asset can be downloaded and installed in ChatGPT Skills
 
 ## Project structure
 
@@ -201,6 +270,8 @@ The generated file is placed under `dist-skill/` and the GitHub Release workflow
 reelora/
 ├── SKILL.md
 ├── README.md
+├── CHANGELOG.md
+├── RELEASE_CHECKLIST.md
 ├── docs/
 │   ├── FEATURES.md
 │   ├── ARCHITECTURE.md
@@ -215,12 +286,14 @@ reelora/
 │   ├── features.ts
 │   ├── ffmpeg.ts
 │   ├── mcp.ts
+│   ├── music.ts
 │   ├── planner.ts
 │   ├── quality.ts
 │   ├── render.ts
 │   ├── revisions.ts
 │   ├── style-reference.ts
 │   ├── timeline.ts
+│   ├── transitions.ts
 │   ├── types.ts
 │   ├── validation.ts
 │   └── vision.ts
