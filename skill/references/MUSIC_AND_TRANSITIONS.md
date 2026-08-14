@@ -1,17 +1,48 @@
-# Reelora Music Director & Premium Transition Engine
+# Reelora Music Director & Modern Transition Engine
 
 ## Default automatic behavior
 
-When the user uploads raw videos plus an ending/outro and does not supply a music track, Reelora should automatically create a premium music-backed edit unless the user explicitly requests silence.
+When the user uploads raw videos plus an ending/outro and does not supply a music track, Reelora should create a music-backed edit unless the user explicitly requests silence or original/natural sound.
 
 The default audio workflow is:
 
 1. Remove/ignore the raw clip soundtrack for the main automatic edit.
 2. Prefer a verified local music-library track whose manifest explicitly records commercial-use rights.
-3. If no verified library track is available, generate a sample-free Reelora Original Beat procedurally from synthesized tones/noise.
+3. If no verified library track is available, generate a sample-free Reelora Original trend-inspired instrumental from synthesized tones/noise.
 4. Use the selected BPM to make shot timing more beat-friendly when safe.
 5. Normalize the final music level and add clean audio fade-in/fade-out.
 6. Land the supplied outro naturally on the music timeline.
+7. Verify the final MP4 contains the expected replacement music stream.
+
+## Executable fallback inside the Skill ZIP
+
+The Skill package includes `scripts/reelora_edit.py` for execution environments that have Python, FFmpeg, and FFprobe but do not have the Reelora MCP backend connected.
+
+Example:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input raw-1.mp4 \
+  --input raw-2.mp4 \
+  --outro outro.mp4 \
+  --output final.mp4 \
+  --style fashion \
+  --highlight top_wear
+```
+
+With supplied music:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input raw-1.mp4 \
+  --outro outro.mp4 \
+  --music song.mp3 \
+  --output final.mp4 \
+  --style fashion \
+  --highlight top_wear
+```
+
+The script renders source clips without their original audio, maps only the chosen/generated music bed into the final MP4, and prints JSON containing `source_audio_replaced`, `music_source`, `music_mood`, BPM, and transition audit data.
 
 ## Rights and licensing rule
 
@@ -41,9 +72,9 @@ Example:
       "id": "premium-01",
       "title": "Premium Fashion Beat",
       "file": "premium-01.mp3",
-      "bpm": 116,
-      "energy": 0.68,
-      "mood": "premium-fashion",
+      "bpm": 124,
+      "energy": 0.82,
+      "mood": "viral-fashion",
       "rights": {
         "kind": "licensed",
         "commercialUse": true,
@@ -59,48 +90,68 @@ Reelora rejects library entries without an accepted rights type and `commercialU
 
 ## Style-aware automatic BPM
 
-Default procedural beat targets:
+Typical trend-inspired targets:
 
-- premium: 116 BPM
-- minimal: 108 BPM
-- fashion: 120 BPM
-- fast ecommerce: 126 BPM
-- cinematic: 96 BPM
-- luxury: 104 BPM
-- clean commercial: 114 BPM
+- premium: about 122 BPM
+- minimal: about 108 BPM
+- fashion: about 124–126 BPM
+- fast ecommerce: about 132 BPM
+- cinematic: about 102 BPM
+- luxury: about 112 BPM
+- clean commercial: about 118 BPM
 
 The BPM is a pacing target, not permission to cut away important garment/product information.
 
-## Premium transition rules
+## Modern transition rules
 
-Premium transitions must use deterministic transforms of real source frames only. Do not generate intermediate models, garments, backgrounds, logos, fabric, hands, or faces.
+The goal is not to show off transitions. The goal is to make the product Reel feel professionally paced.
 
-Allowed transition families include:
+Default priorities:
 
-- smooth left/right/up/down motion transitions;
-- clean dissolve;
-- clean fade;
-- restrained fade-to-black;
-- very short clean cut/fade bridges;
-- subtle product-safe crop movement around a transition.
+- 70–90% of changes should feel like clean beat cuts or almost-instant fade bridges;
+- use variable shot lengths, not a repeated 1.4-second template cadence;
+- use a micro-whip/smooth motion accent only occasionally, roughly every 5–7 transitions at most;
+- keep motion transitions around 0.07–0.10 seconds;
+- keep short fades/dips around 0.04–0.09 seconds;
+- avoid slow dissolves for fashion/ecommerce;
+- avoid repeating left/right/up/down patterns;
+- do not apply an obvious effect on every cut.
 
-Transition choice is style-aware:
+Suggested shot rhythm:
 
-- luxury: slower dissolve / fade-black / restrained smooth motion;
-- fashion: more directional smooth transitions with controlled variety;
-- premium: balanced dissolve, fade, fade-black, and smooth motion;
-- fast ecommerce: shorter/faster smooth transitions and cuts;
-- cinematic: longer fade-black/dissolve timing;
-- minimal: mostly clean fade/dissolve;
-- clean commercial: restrained premium motion.
+- quick detail: roughly 0.6–1.0 seconds;
+- normal product/focus shot: roughly 0.9–1.7 seconds;
+- hero/product hold: roughly 1.5–2.6 seconds when source footage supports it.
+
+Transition personalities:
+
+- fashion / fast ecommerce: mostly hard beat cuts, occasional micro-whip or micro-dip;
+- premium / clean commercial: mostly clean cuts, rare short motion/fade accent;
+- luxury / cinematic: clean cuts with occasional short fade-black/micro-dip;
+- minimal: almost entirely cuts with rare short fade.
 
 Avoid transition spam. The product is always more important than the effect.
 
+## Flash rule
+
+Flash is an accent, not a transition system.
+
+For short Reels, prefer zero or one restrained brightness flash around a strong beat/drop. Keep it very short (about 0.05–0.08 seconds) with a small brightness lift. Never use full-white frames, rapid strobing, repeated flicker, or consecutive flashes.
+
 ## Audio replacement rule
 
-The automatic product/fashion workflow intentionally renders selected raw shots without source audio and adds the chosen music bed afterward. This avoids inconsistent camera audio and creates one coherent premium soundtrack.
+The default automatic product/fashion workflow intentionally renders selected raw shots without source audio and adds the chosen music bed afterward.
 
-If the user explicitly requests original sound, natural sound, or a mix, follow that instruction only when a reliable synchronized mix can be produced. Never add synthetic speech or AI voice-over.
+This is a mandatory behavior unless the user explicitly requests original sound, natural sound, silence, or a synchronized mix.
+
+After rendering, verify:
+
+- final MP4 has an audio stream;
+- the executable fallback reports `source_audio_replaced: true`;
+- `music_source` is `reelora-original` or `user-supplied` as expected;
+- transition audit is mostly `beat-cut` / clean-cut rather than repeated long dissolves.
+
+If verification fails, do not present the render as finished.
 
 ## Preservation priority
 
