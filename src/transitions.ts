@@ -6,66 +6,48 @@ export interface TransitionSpec {
   label: string;
 }
 
-function baseTransition(transition: PlannedShot["transition"], baseDuration: number): TransitionSpec {
-  if (transition === "cut") return { name: "fade", duration: 0.035, label: "clean-cut" };
-  if (transition === "motion") return { name: "smoothleft", duration: Math.max(0.1, baseDuration), label: "smooth-motion" };
-  if (transition === "dissolve") return { name: "dissolve", duration: Math.max(0.12, baseDuration), label: "dissolve" };
-  return { name: "fade", duration: Math.max(0.1, baseDuration), label: "soft-fade" };
+function baseTransition(transition: PlannedShot["transition"]): TransitionSpec {
+  if (transition === "cut") return { name: "fade", duration: 0.025, label: "beat-cut" };
+  if (transition === "motion") return { name: "smoothleft", duration: 0.085, label: "micro-motion" };
+  if (transition === "dissolve") return { name: "fadeblack", duration: 0.07, label: "micro-dip" };
+  return { name: "fade", duration: 0.055, label: "short-fade" };
 }
 
 export function premiumTransitionSpec(
   plan: EditPlan,
   transition: PlannedShot["transition"],
   index: number,
-  baseDuration: number,
+  _baseDuration: number,
 ): TransitionSpec {
-  if (transition === "cut" || plan.options.smartTransitions === false) {
-    return baseTransition(transition, baseDuration);
-  }
+  if (transition === "cut" || plan.options.smartTransitions === false) return baseTransition(transition);
 
   const style = plan.options.style;
-  const premiumDuration = Math.max(0.14, Math.min(0.34, baseDuration));
+
+  if (style === "fashion" || style === "fast_ecommerce") {
+    if (transition === "motion") {
+      const name = index % 2 === 0 ? "smoothleft" : "smoothright";
+      return { name, duration: 0.085, label: `fashion-micro-${name}` };
+    }
+    if (transition === "dissolve") return { name: "fadeblack", duration: 0.065, label: "fashion-micro-dip" };
+    return { name: "fade", duration: 0.045, label: "fashion-short-fade" };
+  }
 
   if (style === "luxury") {
-    const names = transition === "motion"
-      ? ["smoothleft", "smoothright"]
-      : ["dissolve", "fadeblack", "dissolve"];
-    const name = names[index % names.length];
-    return { name, duration: Math.max(0.18, premiumDuration * 1.05), label: `luxury-${name}` };
-  }
-
-  if (style === "fashion") {
-    const names = transition === "motion"
-      ? ["smoothleft", "smoothright", "smoothup", "smoothdown"]
-      : ["dissolve", "smoothleft", "fade", "smoothright"];
-    const name = names[index % names.length];
-    return { name, duration: premiumDuration, label: `fashion-${name}` };
-  }
-
-  if (style === "fast_ecommerce") {
-    const names = ["smoothleft", "smoothright", "fade", "dissolve"];
-    const name = names[index % names.length];
-    return { name, duration: Math.max(0.1, premiumDuration * 0.72), label: `commerce-${name}` };
+    if (transition === "motion") return { name: index % 2 ? "smoothleft" : "smoothright", duration: 0.09, label: "luxury-micro-motion" };
+    return { name: "fadeblack", duration: 0.08, label: "luxury-soft-dip" };
   }
 
   if (style === "cinematic") {
-    const names = transition === "motion"
-      ? ["smoothleft", "smoothright"]
-      : ["fadeblack", "dissolve", "fade"];
-    const name = names[index % names.length];
-    return { name, duration: Math.max(0.2, premiumDuration * 1.12), label: `cinematic-${name}` };
+    if (transition === "motion") return { name: "smoothleft", duration: 0.1, label: "cinematic-micro-motion" };
+    return { name: "fadeblack", duration: 0.09, label: "cinematic-short-dip" };
   }
 
-  if (style === "minimal") {
-    const names = ["fade", "dissolve", "fade"];
-    const name = names[index % names.length];
-    return { name, duration: Math.max(0.12, premiumDuration * 0.82), label: `minimal-${name}` };
-  }
+  if (style === "minimal") return { name: "fade", duration: 0.05, label: "minimal-short-fade" };
 
-  // premium + clean_commercial default: restrained, polished, and product-safe.
-  const names = transition === "motion"
-    ? ["smoothleft", "smoothright", "smoothleft"]
-    : ["dissolve", "fade", "fadeblack", "dissolve"];
-  const name = names[index % names.length];
-  return { name, duration: premiumDuration, label: `premium-${name}` };
+  if (transition === "motion") {
+    const name = index % 2 ? "smoothleft" : "smoothright";
+    return { name, duration: 0.075, label: `premium-micro-${name}` };
+  }
+  if (transition === "dissolve") return { name: "fadeblack", duration: 0.07, label: "premium-micro-dip" };
+  return { name: "fade", duration: 0.045, label: "premium-short-fade" };
 }
