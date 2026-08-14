@@ -102,12 +102,32 @@ async function renderOutro(plan: EditPlan, workDir: string, audit: string[]): Pr
   return { path: output, duration: info.duration };
 }
 
+function subtleFlashEnabled(plan: EditPlan): boolean {
+  return plan.options.smartTransitions !== false && process.env.REELORA_SUBTLE_FLASH !== "0";
+}
+
+function flashCadence(plan: EditPlan): number {
+  const envCadence = Number(process.env.REELORA_FLASH_CADENCE);
+  if (Number.isFinite(envCadence) && envCadence >= 3 && envCadence <= 10) return Math.round(envCadence);
+  if (plan.options.style === "fashion" || plan.options.style === "fast_ecommerce") return 4;
+  if (plan.options.style === "luxury" || plan.options.style === "cinematic") return 6;
+  return 5;
+}
+
+function flashLift(): number {
+  const requested = Number(process.env.REELORA_FLASH_STRENGTH ?? "0.10");
+  const safe = Number.isFinite(requested) ? Math.max(0.04, Math.min(0.16, requested)) : 0.10;
+  return Math.min(0.055, 0.018 + safe * 0.23);
+}
+
 function xfadeGraph(plan: EditPlan, durations: number[], audit: string[]): { graph: string; label: string } {
   if (durations.length === 1) return { graph: "", label: "0:v" };
   const filters: string[] = [];
+  const flashMoments: number[] = [];
   let previous = "0:v";
   let timeline = durations[0];
   const style = STYLE_PROFILES[plan.options.style];
+  const cadence = flashCadence(plan);
 
   for (let i = 1; i < durations.length; i += 1) {
     const label = `v${i}`;
@@ -117,9 +137,29 @@ function xfadeGraph(plan: EditPlan, durations: number[], audit: string[]): { gra
     const offset = Math.max(0.01, timeline - duration);
     filters.push(`[${previous}][${i}:v]xfade=transition=${spec.name}:duration=${duration.toFixed(3)}:offset=${offset.toFixed(3)}[${label}]`);
     audit.push(`transition ${i}: ${spec.label} (${spec.name}, ${duration.toFixed(3)}s)`);
+
+    const isOutroTransition = i >= plan.shots.length;
+    if (subtleFlashEnabled(plan) && !isOutroTransition && i >= 2 && i % cadence === 0) {
+      flashMoments.push(offset + Math.min(duration * 0.45, 0.06));
+    }
+
     previous = label;
     timeline += durations[i] - duration;
   }
+
+  if (flashMoments.length) {
+    const brightness = flashLift();
+    const contrast = 1.008;
+    for (let i = 0; i < flashMoments.length; i += 1) {
+      const start = Math.max(0, flashMoments[i] - 0.025);
+      const end = start + 0.085;
+      const label = `flash${i}`;
+      filters.push(`[${previous}]eq=brightness=${brightness.toFixed(3)}:contrast=${contrast.toFixed(3)}:enable='between(t,${start.toFixed(3)},${end.toFixed(3)})'[${label}]`);
+      audit.push(`subtle-flash ${i + 1}: ${start.toFixed(3)}-${end.toFixed(3)}s, brightness +${brightness.toFixed(3)} (eye-safe restrained accent)`);
+      previous = label;
+    }
+  }
+
   return { graph: filters.join(";"), label: previous };
 }
 
