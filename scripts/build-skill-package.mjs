@@ -7,23 +7,30 @@ const root = process.cwd();
 const pkg = JSON.parse(await readFile(path.join(root, "package.json"), "utf8"));
 const dist = path.join(root, "dist-skill");
 const skillRoot = path.join(dist, "reelora");
+const agents = path.join(skillRoot, "agents");
+const assets = path.join(skillRoot, "assets");
 const references = path.join(skillRoot, "references");
 const scripts = path.join(skillRoot, "scripts");
 const zipPath = path.join(dist, `reelora-skill-v${pkg.version}.zip`);
 
 await rm(dist, { recursive: true, force: true });
+await mkdir(agents, { recursive: true });
+await mkdir(assets, { recursive: true });
 await mkdir(references, { recursive: true });
 await mkdir(scripts, { recursive: true });
 
 const baseSkill = await readFile(path.join(root, "SKILL.md"), "utf8");
 const musicDirective = `\n\n## Executable media addendum\n\nFor automatic soundtrack replacement, beat-aware pacing, verified music-rights behavior, the sample-free Reelora original fallback, premium transition families, and real-pixel animation rules, read \`references/MUSIC_AND_TRANSITIONS.md\`. For one or many uploaded generated videos or any landscape-to-Reel request, read \`references/AI_VIDEO_REMIX_AND_REFRAME.md\`. Pass every uploaded source to the renderer and require the source-usage audit to confirm that all were used. When MCP is unavailable but Python + FFmpeg + FFprobe are available, run \`scripts/reelora_edit.py\` rather than stopping at instructions. Unless the user explicitly requests silence/original sound/mix, the automatic workflow must replace source clip audio with the selected/generated music bed and verify the final output. Never describe an unverified random track as copyright-free.\n`;
 await writeFile(path.join(skillRoot, "SKILL.md"), `${baseSkill.trimEnd()}${musicDirective}`, "utf8");
-await cp(path.join(root, "skill", "README.md"), path.join(skillRoot, "README.md"));
+await cp(path.join(root, "agents", "openai.yaml"), path.join(agents, "openai.yaml"));
+await cp(path.join(root, "assets", "icon.svg"), path.join(assets, "icon.svg"));
 for (const file of ["EDITING_RULES.md", "PRESERVATION.md", "SHOT_DISTRIBUTION.md", "FEATURES.md"]) {
   await cp(path.join(root, "docs", file), path.join(references, file));
 }
 await cp(path.join(root, "skill", "references"), references, { recursive: true });
-await cp(path.join(root, "skill", "scripts"), scripts, { recursive: true });
+for (const file of ["check_reelora_runtime.py", "reelora_edit.py"]) {
+  await cp(path.join(root, "skill", "scripts", file), path.join(scripts, file));
+}
 await writeFile(
   path.join(skillRoot, "manifest.json"),
   JSON.stringify(
@@ -33,6 +40,14 @@ await writeFile(
       preservationMode: "strict-no-generative",
       entrypoint: "SKILL.md",
       repository: "https://github.com/jmqbataller/reelora",
+      surfaceCompatibility: {
+        ordinaryChat: true,
+        workMode: true,
+        explicitInvocation: ["$reelora", "@Reelora"],
+        implicitInvocation: true,
+        noWorkModeGate: true,
+        renderWhenRuntimeAvailable: true
+      },
       executableFallback: {
         script: "scripts/reelora_edit.py",
         runtimeCheck: "scripts/check_reelora_runtime.py",

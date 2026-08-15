@@ -16,17 +16,25 @@ Reelora handles clip selection, generated-video remix, landscape-to-9:16 reframi
 
 ## Download the ChatGPT Skill
 
-### Latest: Reelora v0.7.2
+### Latest: Reelora v0.7.3
 
-**[Download Reelora Skill v0.7.2 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.7.2/reelora-skill-v0.7.2.zip)**
+**[Download Reelora Skill v0.7.3 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.7.3/reelora-skill-v0.7.3.zip)**
 
 Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
-The ZIP contains a top-level `reelora/` Skill folder with `SKILL.md`, references, manifest metadata, a runtime checker, and the executable deterministic fallback editor `scripts/reelora_edit.py`.
+The ZIP contains a top-level `reelora/` Skill folder with ordinary-Chat UI metadata, its icon, `SKILL.md`, references, manifest metadata, a runtime checker, and the executable deterministic fallback editor `scripts/reelora_edit.py`.
 
 Release history: [`CHANGELOG.md`](./CHANGELOG.md)
 
 Release verification steps: [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+
+## v0.7.3 — ordinary Chat + Work compatibility
+
+Reelora is now packaged for invocation from an ordinary ChatGPT conversation as well as Work. The installable ZIP includes `agents/openai.yaml`, the Reelora icon, a concise Chat UI description, a `$reelora` default prompt, and `allow_implicit_invocation: true` so clear video-editing requests can trigger it automatically.
+
+In Chat, attach one or more videos and ask naturally, for example: `Recreate these as a premium Reel and use every upload.` You can also invoke it explicitly with `$reelora` or `@Reelora`. Reelora renders in the same conversation whenever the current Chat surface exposes its media runtime; otherwise it reports the limitation truthfully instead of pretending an MP4 was created.
+
+OpenAI currently requires Personal Skills to be installed separately on desktop and web/mobile; installing on one surface does not automatically copy it to the other.
 
 ## v0.7.2 — genuine AI-video re-edit and recreate
 
@@ -330,10 +338,10 @@ npm run build
 npm run pack:skill
 ```
 
-For v0.7.2 the generated file is:
+For v0.7.3 the generated file is:
 
 ```text
-dist-skill/reelora-skill-v0.7.2.zip
+dist-skill/reelora-skill-v0.7.3.zip
 ```
 
 If dependencies are already installed and you only need to rebuild the Skill package:

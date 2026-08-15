@@ -41,6 +41,11 @@ Reelora never generates/replaces the model, face, product, fabric, logo, print, 
 
 ## Editing intelligence
 
+- Ordinary ChatGPT Chat and Work-compatible skill invocation
+- Automatic invocation from clear video-editing requests
+- Explicit `$reelora` and `@Reelora` invocation
+- Same-conversation rendering whenever media execution is available
+
 - Uploaded AI-generated video re-edit mode with chronological story preservation
 - Uploaded AI-generated video recreate mode using the strongest existing source moments
 - Multi-video AI remix using every uploaded source by default

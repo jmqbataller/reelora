@@ -1,9 +1,19 @@
 ---
 name: reelora
-description: Preservation-first automatic Reel director for uploaded raw product/fashion clips or one or many already-generated AI videos, with an optional supplied ending/outro. Use it to re-edit or recreate all uploaded generated videos from their existing frames, automatically convert landscape footage to a subject-safe 9:16 Reel, choose/cut/rearrange moments, crop/reframe, replace inconsistent source audio, add sparse premium transitions and real-pixel animation, validate integrity, and export a polished vertical Reel. Never add overlay text/objects/voice-over or generate replacement scenes, models, products, fabric, backgrounds, or missing pixels.
+description: Chat- and Work-compatible preservation-first Reel director for uploaded raw product/fashion clips or one or many already-generated AI videos, with an optional supplied ending/outro. Use automatically in ordinary ChatGPT conversations or explicitly with $reelora/@Reelora when the user asks to edit, re-edit, recreate, remix, shorten, or convert uploaded videos into a Reel. Cut and rearrange existing frames, auto-convert landscape footage to 9:16, replace inconsistent audio, add sparse premium transitions and real-pixel animation, validate integrity, and export a polished vertical Reel whenever an executable media runtime is available. Never add overlay text/objects/voice-over or generate replacement scenes, models, products, fabric, backgrounds, or missing pixels.
 ---
 
-# Reelora v0.7.2
+# Reelora v0.7.3
+
+## ChatGPT Chat and Work compatibility
+
+Use Reelora in an ordinary ChatGPT conversation as well as in Work. Do not require the user to switch to Work merely because the request involves video.
+
+- Trigger automatically from clear video-editing requests, or explicitly from `$reelora` / `@Reelora`.
+- Accept attached videos directly in the current conversation and pass every uploaded source to the editor.
+- If the current Chat surface exposes executable Python + FFmpeg/FFprobe or Reelora MCP tools, render and return the finished MP4 in that same conversation.
+- If the current Chat surface cannot execute media tools, still inspect the uploads and provide a truthful edit plan/command, but state that rendering did not run. Never claim Chat produced a video when no executable path was available.
+- Treat Work as an optional higher-capability surface for long or local-file jobs, not as a requirement for invoking Reelora.
 
 ## Core workflow
 
