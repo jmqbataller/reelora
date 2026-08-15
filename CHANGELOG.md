@@ -2,6 +2,23 @@
 
 All notable changes to Reelora are documented here.
 
+## [0.7.1] - 2026-08-15
+
+### Fixed
+
+- Fixed multi-upload edits selecting footage from only one video. Every uploaded source now contributes at least one shot by default.
+- Added balanced round-robin source selection so three uploads receive near-equal shot counts instead of competing only by global score.
+- Changed unreadable or candidate-empty uploads into explicit errors instead of silently omitting them.
+- Updated the executable fallback so repeated `--input` values work with `--remix-ai-video`; the old exactly-one-input restriction is removed.
+
+### Added
+
+- `reelora_remix_ai_videos` MCP tool accepting one to twenty generated videos in upload order.
+- `useAllUploadedVideos` default-on planning control and validation guard.
+- Per-upload shot-count and planned-duration reporting through `sourceUsage` / `source_usage`.
+- Explicit `allUploadedVideosUsed` / `all_uploaded_videos_used` verification result.
+- TypeScript planner tests and Python fallback tests for balanced three-video coverage, chronological re-edit ordering, and visible missing-source failure.
+
 ## [0.7.0] - 2026-08-15
 
 ### Added

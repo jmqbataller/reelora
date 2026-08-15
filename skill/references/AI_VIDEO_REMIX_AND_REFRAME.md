@@ -1,10 +1,10 @@
 # AI Video Remix and Automatic Vertical Reframe
 
-Use this workflow when the user uploads one already-generated video and asks to recreate, remix, improve, shorten, or re-edit it as a Reel.
+Use this workflow when the user uploads one or many already-generated videos and asks to recreate, remix, improve, shorten, or re-edit them as one Reel.
 
 ## Execution choice
 
-Prefer the MCP tool `reelora_remix_ai_video` when available.
+Prefer `reelora_remix_ai_videos` for multiple uploads and include every path in `generatedVideos`. Use `reelora_remix_ai_video` only for exactly one upload.
 
 For the bundled fallback, preserve story order with:
 
@@ -30,6 +30,22 @@ python3 scripts/reelora_edit.py \
   --style cinematic
 ```
 
+For three uploaded generated videos, repeat `--input` and do not omit any attachment:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input generated-one.mp4 \
+  --input generated-two.mp4 \
+  --input generated-three.mp4 \
+  --output all-videos-reel.mp4 \
+  --remix-ai-video \
+  --remix-mode recreate \
+  --landscape-reframe auto \
+  --style premium
+```
+
+Every upload must contribute at least one shot. `re_edit` keeps upload order and chronological moments inside each video; `recreate` may interleave sources. An unreadable/empty source is a visible failure, not permission to fall back to only the first video.
+
 Add `--outro OUTRO.mp4` only when the user supplies an ending. Add `--music MUSIC_FILE` when the user supplies music.
 
 ## Reframe rules
@@ -50,5 +66,7 @@ Require the JSON audit to report:
 - each source orientation and size
 - per-shot `vertical_reframe`
 - `source_audio_replaced: true` unless the user explicitly requested original audio behavior
+- `all_uploaded_videos_used: true`
+- one `source_usage` entry per upload, each with `shot_count` greater than zero
 
 Probe the final MP4 and confirm 1080x1920 video plus an audio stream when automatic/supplied music is used.

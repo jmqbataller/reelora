@@ -43,6 +43,9 @@ Reelora never generates/replaces the model, face, product, fabric, logo, print, 
 
 - Uploaded AI-generated video re-edit mode with chronological story preservation
 - Uploaded AI-generated video recreate mode using the strongest existing source moments
+- Multi-video AI remix using every uploaded source by default
+- Balanced round-robin source coverage with upload-order preservation in re-edit mode
+- Per-upload shot-count/duration audit and an explicit all-sources-used result
 - Optional outro for generated-video remix jobs
 
 - Scene detection and candidate generation

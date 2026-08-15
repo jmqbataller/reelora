@@ -38,6 +38,10 @@ export interface GeneratedVideoRemixRequest {
   options?: ReeloraAdvancedOptions;
 }
 
+export interface GeneratedVideosRemixRequest extends Omit<GeneratedVideoRemixRequest, "generatedVideo"> {
+  generatedVideos: string[];
+}
+
 export interface AnalyzeRequest {
   rawVideos: string[];
   highlight?: HighlightIntent;
@@ -179,7 +183,7 @@ export async function editReel(request: EditRequest) {
       highlight: request.highlight,
       targetContentDuration: request.targetDuration,
       audioMode: request.audioMode,
-      options,
+      options: { ...options, inputSourceCount: rawPaths.length },
     });
     validatePlan(initialPlan);
 
@@ -201,6 +205,17 @@ export async function editReel(request: EditRequest) {
     const publicUrl = (filePath?: string) => filePath && publicBaseUrl
       ? `${publicBaseUrl}/outputs/${encodeURIComponent(path.basename(filePath))}`
       : undefined;
+
+    const sourceUsage = rawPaths.map((_, sourceIndex) => {
+      const shots = rendered.plan.shots.filter((shot) => shot.sourceIndex === sourceIndex);
+      return {
+        sourceIndex,
+        uploadNumber: sourceIndex + 1,
+        shotCount: shots.length,
+        plannedDuration: Number(shots.reduce((sum, shot) => sum + shot.targetDuration, 0).toFixed(3)),
+      };
+    });
+    const allUploadedVideosUsed = sourceUsage.every((source) => source.shotCount > 0);
 
     return {
       ...rendered.render,
@@ -226,6 +241,8 @@ export async function editReel(request: EditRequest) {
       qualityReportUrl: publicUrl(qualityPath),
       fallbackUsed: rendered.fallbackUsed,
       featureCount: REELORA_FEATURES.length,
+      sourceUsage,
+      allUploadedVideosUsed,
       plan: {
         highlight: rendered.plan.highlight,
         targetContentDuration: rendered.plan.targetContentDuration,
@@ -237,6 +254,8 @@ export async function editReel(request: EditRequest) {
         remixMode: rendered.plan.options.remixMode,
         landscapeReframeMode: rendered.plan.options.landscapeReframeMode,
         outputAspectRatio: "9:16",
+        sourceUsage,
+        allUploadedVideosUsed,
         shots: rendered.plan.shots.map((shot) => ({
           sourceIndex: shot.sourceIndex,
           start: shot.start,
@@ -258,9 +277,14 @@ export async function editReel(request: EditRequest) {
 }
 
 export async function remixGeneratedVideo(request: GeneratedVideoRemixRequest) {
+  return remixGeneratedVideos({ ...request, generatedVideos: [request.generatedVideo] });
+}
+
+export async function remixGeneratedVideos(request: GeneratedVideosRemixRequest) {
+  if (!request.generatedVideos.length) throw new Error("At least one generated video is required.");
   const remixMode = request.remixMode ?? "re_edit";
   return editReel({
-    rawVideos: [request.generatedVideo],
+    rawVideos: request.generatedVideos,
     outroVideo: request.outroVideo,
     music: request.music,
     highlight: request.highlight ?? "general",
@@ -272,6 +296,7 @@ export async function remixGeneratedVideo(request: GeneratedVideoRemixRequest) {
       sourceKind: "generated_video",
       remixMode,
       preserveSourceSequence: request.options?.preserveSourceSequence ?? remixMode === "re_edit",
+      useAllUploadedVideos: request.options?.useAllUploadedVideos ?? true,
       autoVerticalReframe: request.options?.autoVerticalReframe ?? true,
       landscapeReframeMode: request.options?.landscapeReframeMode ?? "auto",
       noGenerativeMode: true,
