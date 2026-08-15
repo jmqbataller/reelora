@@ -6,7 +6,7 @@
 
 Reelora is a preservation-first automatic Reel director, FFmpeg renderer, MCP adapter, and installable ChatGPT Skill for product/fashion videos.
 
-Upload raw clips, or send one already-generated AI video to re-edit/recreate. A supplied ending/outro remains supported and is optional for AI-video remix mode.
+Upload raw clips, or send one or many already-generated AI videos to re-edit/recreate together. A supplied ending/outro remains supported and is optional for AI-video remix mode.
 
 ```text
 Make these into a quality Reel. Highlight the top wear.
@@ -16,9 +16,9 @@ Reelora handles clip selection, generated-video remix, landscape-to-9:16 reframi
 
 ## Download the ChatGPT Skill
 
-### Latest: Reelora v0.7.0
+### Latest: Reelora v0.7.1
 
-**[Download Reelora Skill v0.7.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.7.0/reelora-skill-v0.7.0.zip)**
+**[Download Reelora Skill v0.7.1 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.7.1/reelora-skill-v0.7.1.zip)**
 
 Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
@@ -27,6 +27,28 @@ The ZIP contains a top-level `reelora/` Skill folder with `SKILL.md`, references
 Release history: [`CHANGELOG.md`](./CHANGELOG.md)
 
 Release verification steps: [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+
+## v0.7.1 — every uploaded video is used
+
+Multi-video editing now requires source coverage by default. If you upload three videos, Reelora allocates shots across all three, balances their usage, and reports `sourceUsage` plus `allUploadedVideosUsed: true`. It never silently renders from only the first or globally highest-ranked upload. If a source is unreadable or contains no usable clip, the edit stops with a clear error naming that upload.
+
+Use the plural MCP tool for multiple generated videos:
+
+```text
+reelora_remix_ai_videos({ generatedVideos: [video1, video2, video3] })
+```
+
+The executable fallback accepts the same multi-source workflow through repeated inputs:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input generated-one.mp4 \
+  --input generated-two.mp4 \
+  --input generated-three.mp4 \
+  --output all-videos-reel.mp4 \
+  --remix-ai-video \
+  --remix-mode recreate
+```
 
 ## v0.7.0 — AI-video remix + automatic landscape-to-Reel reframing
 
@@ -216,6 +238,7 @@ It returns every capability with one of these statuses:
 - `reelora_analyze` — inspect raw sources/candidate moments/vision observations
 - `reelora_edit` — render the final Reel
 - `reelora_remix_ai_video` — re-edit/recreate one generated video and automatically convert landscape input to a 9:16 Reel
+- `reelora_remix_ai_videos` — combine all uploaded generated videos with balanced mandatory source coverage and automatic 9:16 conversion
 - `reelora_variants` — premium / fast ecommerce / luxury variants
 - `reelora_batch_edit` — batch isolated product jobs
 - `reelora_revise_plan` — structured targeted edit-plan revisions
@@ -295,10 +318,10 @@ npm run build
 npm run pack:skill
 ```
 
-For v0.7.0 the generated file is:
+For v0.7.1 the generated file is:
 
 ```text
-dist-skill/reelora-skill-v0.7.0.zip
+dist-skill/reelora-skill-v0.7.1.zip
 ```
 
 If dependencies are already installed and you only need to rebuild the Skill package:

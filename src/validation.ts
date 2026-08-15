@@ -32,6 +32,15 @@ export function validatePlan(plan: EditPlan): void {
 
   validateDistribution(actualDistribution(plan), plan.distribution);
 
+  if (plan.options.useAllUploadedVideos !== false && plan.options.inputSourceCount !== undefined) {
+    const usedSources = new Set(plan.shots.map((shot) => shot.sourceIndex));
+    const missingSources = Array.from({ length: plan.options.inputSourceCount }, (_, index) => index)
+      .filter((index) => !usedSources.has(index));
+    if (missingSources.length) {
+      throw new Error(`Edit plan omitted uploaded video(s) ${missingSources.map((index) => index + 1).join(", ")}.`);
+    }
+  }
+
   if (plan.highlight === "top_wear" && !near(plan.distribution.focus, 0.7, 0.001) && !plan.options.distribution) {
     throw new Error("Default top-wear edits must keep the 70% focus / 20% whole-body / 10% detail rule.");
   }

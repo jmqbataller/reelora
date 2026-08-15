@@ -140,6 +140,9 @@ export interface ReeloraAdvancedOptions {
   sourceKind?: SourceKind;
   remixMode?: RemixMode;
   preserveSourceSequence?: boolean;
+  useAllUploadedVideos?: boolean;
+  /** Runtime-only source count used to verify that no uploaded video was omitted. */
+  inputSourceCount?: number;
   autoVerticalReframe?: boolean;
   landscapeReframeMode?: LandscapeReframeMode;
   autoThumbnail?: boolean;

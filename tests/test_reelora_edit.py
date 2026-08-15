@@ -47,11 +47,30 @@ class PremiumEffectsTests(unittest.TestCase):
 
     def test_ai_video_reedit_windows_preserve_chronological_order(self):
         windows = reelora_edit.source_windows(["generated.mp4"], [20.0], 8, "re_edit")
-        starts = [start for _, start in windows]
+        starts = [start for _, start, _ in windows]
         self.assertEqual(starts, sorted(starts))
         recreated = reelora_edit.source_windows(["generated.mp4"], [20.0], 8, "recreate")
-        recreated_starts = [start for _, start in recreated]
+        recreated_starts = [start for _, start, _ in recreated]
         self.assertNotEqual(recreated_starts, sorted(recreated_starts))
+
+    def test_multi_source_remix_uses_every_uploaded_video_balanced(self):
+        windows = reelora_edit.source_windows(
+            ["one.mp4", "two.mp4", "three.mp4"],
+            [12.0, 16.0, 20.0],
+            10,
+            "re_edit",
+        )
+        source_indices = [source_index for _, _, source_index in windows]
+        self.assertEqual(set(source_indices), {0, 1, 2})
+        counts = [source_indices.count(index) for index in range(3)]
+        self.assertLessEqual(max(counts) - min(counts), 1)
+        for source_index in range(3):
+            starts = [start for _, start, index in windows if index == source_index]
+            self.assertEqual(starts, sorted(starts))
+
+    def test_raw_multi_source_windows_use_every_upload(self):
+        windows = reelora_edit.source_windows(["one.mp4", "two.mp4", "three.mp4"], [10.0] * 3, 8)
+        self.assertEqual({source_index for _, _, source_index in windows}, {0, 1, 2})
 
 
 if __name__ == "__main__":

@@ -107,9 +107,16 @@ function chooseCandidate(
   shotType: ShotType,
   used: CandidateSegment[],
   options: ReeloraAdvancedOptions,
+  requiredSourceIndex?: number,
 ): CandidateSegment | undefined {
-  return [...candidates]
-    .sort((a, b) => candidateRank(b, shotType, used, options) - candidateRank(a, shotType, used, options))[0];
+  const sourceCandidates = requiredSourceIndex === undefined
+    ? candidates
+    : candidates.filter((candidate) => candidate.sourceIndex === requiredSourceIndex);
+  const unusedCandidates = sourceCandidates.filter((candidate) => !used.some((item) => (
+    item.sourcePath === candidate.sourcePath && item.start === candidate.start && item.duration === candidate.duration
+  )));
+  const pool = unusedCandidates.length ? unusedCandidates : sourceCandidates;
+  return [...pool].sort((a, b) => candidateRank(b, shotType, used, options) - candidateRank(a, shotType, used, options))[0];
 }
 
 function maximumSafeTotal(
@@ -201,11 +208,23 @@ export function buildEditPlan(args: {
   if (!args.candidates.length) throw new Error("No usable candidate clips were found in the raw videos.");
 
   const options = defaultAdvancedOptions(args.highlight, args.options);
+  const sourceIndices = [...new Set(args.candidates.map((candidate) => candidate.sourceIndex))].sort((a, b) => a - b);
+  if (options.useAllUploadedVideos !== false && options.inputSourceCount !== undefined) {
+    const missingSources = Array.from({ length: options.inputSourceCount }, (_, index) => index)
+      .filter((index) => !sourceIndices.includes(index));
+    if (missingSources.length) {
+      throw new Error(`Uploaded video(s) ${missingSources.map((index) => index + 1).join(", ")} produced no usable clips. Reelora stopped instead of silently omitting them.`);
+    }
+  }
   const distribution = normalizeDistribution(options.distribution!);
   const style = STYLE_PROFILES[options.style ?? "premium"];
   const automaticDuration = Math.max(8, Math.min(24, args.candidates.length * 1.15 * style.shotLengthMultiplier));
   const requestedTotalRaw = Math.max(6, Math.min(args.targetContentDuration ?? automaticDuration, 45));
-  const counts = countsForDistribution(distribution, 10);
+  const slotCount = Math.max(10, Math.min(20, sourceIndices.length));
+  if (options.useAllUploadedVideos !== false && sourceIndices.length > slotCount) {
+    throw new Error(`Reelora received ${sourceIndices.length} uploaded videos but supports at most ${slotCount} sources in one guaranteed-coverage edit.`);
+  }
+  const counts = countsForDistribution(distribution, slotCount);
   const pattern = interleavedPattern(counts);
   const requestedTotal = options.beatSync !== false && args.musicPath
     ? beatFriendlyTotal(requestedTotalRaw, args.musicBpm, pattern.length)
@@ -213,8 +232,12 @@ export function buildEditPlan(args: {
   const selected: Array<CandidateSegment & { shotType: ShotType }> = [];
   const used: CandidateSegment[] = [];
 
-  for (const shotType of pattern) {
-    const candidate = chooseCandidate(args.candidates, shotType, used, options);
+  for (let index = 0; index < pattern.length; index += 1) {
+    const shotType = pattern[index];
+    const requiredSourceIndex = options.useAllUploadedVideos !== false && sourceIndices.length > 1
+      ? sourceIndices[index % sourceIndices.length]
+      : undefined;
+    const candidate = chooseCandidate(args.candidates, shotType, used, options, requiredSourceIndex);
     if (!candidate) continue;
     used.push(candidate);
     selected.push({ ...candidate, shotType });

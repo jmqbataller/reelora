@@ -139,18 +139,41 @@ def normalize_pattern(style, target, bpm, count):
     return [v*scale2 for v in vals]
 
 def source_windows(inputs, durations, count=8, remix_mode=None):
-    if remix_mode and len(inputs) == 1:
-        if remix_mode == 're_edit':
-            fractions = [0.04 + (0.88 * i / max(1, count - 1)) for i in range(count)]
-        else:
-            pattern = [0.05, 0.55, 0.28, 0.78, 0.42, 0.66, 0.16, 0.90, 0.34, 0.72, 0.22, 0.84]
-            fractions = [pattern[i % len(pattern)] for i in range(count)]
-        return [(inputs[0], max(0.0, durations[0] * frac)) for frac in fractions]
+    if not inputs:
+        return []
+    if count < len(inputs):
+        raise ValueError('Shot count must be at least the number of uploaded videos.')
+
+    allocations = [count // len(inputs)] * len(inputs)
+    for idx in range(count % len(inputs)):
+        allocations[idx] += 1
+
+    if remix_mode == 're_edit':
+        out=[]
+        for source_index, p in enumerate(inputs):
+            source_count=allocations[source_index]
+            fractions=[0.04 + (0.88 * i / max(1, source_count - 1)) for i in range(source_count)]
+            out.extend((p, max(0.0, durations[source_index] * frac), source_index) for frac in fractions)
+        return out
+
+    if remix_mode == 'recreate':
+        pattern=[0.05,0.55,0.28,0.78,0.42,0.66,0.16,0.90,0.34,0.72,0.22,0.84]
+        used=[0] * len(inputs); out=[]
+        for shot_index in range(count):
+            source_index=shot_index % len(inputs)
+            occurrence=used[source_index]; used[source_index] += 1
+            frac=pattern[(occurrence * len(inputs) + source_index) % len(pattern)]
+            out.append((inputs[source_index], max(0.0, durations[source_index] * frac), source_index))
+        return out
+
     out=[]
-    for idx, p in enumerate(inputs):
-        d=durations[idx]
-        for frac in (0.12,0.42,0.72):
-            out.append((p, max(0.0, d*frac)))
+    fractions=(0.12,0.42,0.72,0.26,0.58,0.86)
+    for round_index in range(max(allocations)):
+        for source_index, p in enumerate(inputs):
+            if round_index >= allocations[source_index]:
+                continue
+            frac=fractions[round_index % len(fractions)]
+            out.append((p, max(0.0, durations[source_index] * frac), source_index))
     return out
 
 def resolve_reframe_mode(width, height, requested='auto', has_tracked_region=False):
@@ -263,32 +286,34 @@ def main():
     ap.add_argument('--no-animation-effects', action='store_true', help='Disable premium real-pixel crop/parallax animation.')
     ap.add_argument('--transition-intensity', default='balanced', choices=('subtle','balanced','bold'))
     ap.add_argument('--transition-family', action='append', choices=sorted(PREMIUM_TRANSITIONS), help='Allow one premium family; repeat to build an allowlist.')
-    ap.add_argument('--remix-ai-video', action='store_true', help='Treat one generated video as the source and rebuild it into a Reel.')
+    ap.add_argument('--remix-ai-video', action='store_true', help='Treat all repeated --input generated videos as sources and rebuild them into one Reel.')
     ap.add_argument('--remix-mode', default='re_edit', choices=('re_edit','recreate'), help='re_edit preserves story order; recreate rebuilds the sequence from the strongest existing moments.')
     ap.add_argument('--landscape-reframe', default='auto', choices=('auto','smart_crop','blur_fill'), help='Automatic landscape-to-9:16 behavior. auto uses blurred real-pixel fill when no tracked crop exists.')
     args=ap.parse_args()
     ensure_tools()
     inputs=[Path(x).resolve() for x in args.input]
-    if args.remix_ai_video and len(inputs) != 1:
-        raise SystemExit('--remix-ai-video requires exactly one --input generated video')
+    if len(inputs) > 20:
+        raise SystemExit('Reelora supports at most 20 uploaded videos in one guaranteed-coverage edit')
     outro=Path(args.outro).resolve() if args.outro else None; output=Path(args.output).resolve()
     for p in inputs+([outro] if outro else []):
         if not p.exists(): raise SystemExit(f'Missing media: {p}')
     bpm,mood=choose_bpm(args.style,args.highlight)
     src_durations=[probe_duration(p) for p in inputs]
-    count=max(4,min(args.shots,12))
+    count=max(4,min(max(args.shots,len(inputs)),20))
     shot_durations=normalize_pattern(args.style,max(6.0,min(args.content_duration,30.0)),bpm,count)
     windows=source_windows(inputs,src_durations,count,args.remix_mode if args.remix_ai_video else None)
     with tempfile.TemporaryDirectory(prefix='reelora-skill-') as td:
         td=Path(td); parts=[]; actual=[]
-        animations=[]
+        animations=[]; selected_sources=[]; selected_source_durations=[]
         for i,dur in enumerate(shot_durations):
-            src,anchor=windows[i % len(windows)]
+            src,anchor,source_index=windows[i % len(windows)]
             src_d=probe_duration(src)
             start=min(max(0.0,anchor), max(0.0,src_d-dur-0.05))
             safe=min(dur,max(0.35,src_d-start-0.02))
             part=td/f'shot-{i:02d}.mp4'
-            animations.append(render_part(src,start,safe,part,args.style,i,not args.no_animation_effects,args.landscape_reframe))
+            animation=render_part(src,start,safe,part,args.style,i,not args.no_animation_effects,args.landscape_reframe)
+            animation['source_index']=source_index; animation['upload_number']=source_index+1
+            animations.append(animation); selected_sources.append(source_index); selected_source_durations.append(safe)
             parts.append(part); actual.append(safe)
         if outro:
             outro_part=td/'outro.mp4'; render_outro(outro,outro_part); outro_d=probe_duration(outro_part)
@@ -301,6 +326,7 @@ def main():
             music=td/'reelora-original.wav'; make_music(music,sum(actual)+1.0,bpm,mood); music_source='reelora-original'
         output.parent.mkdir(parents=True,exist_ok=True)
         final_d,audit=compose(parts,actual,output,music,args.style,not args.no_flash,not args.no_premium_effects,args.transition_intensity,args.transition_family,bool(outro))
-    print(json.dumps({'output':str(output),'duration':round(final_d,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'ai_video_remix':args.remix_ai_video,'remix_mode':args.remix_mode if args.remix_ai_video else None,'preserve_source_sequence':args.remix_ai_video and args.remix_mode == 're_edit','automatic_vertical_reframe':True,'landscape_reframe':args.landscape_reframe,'source_media':[probe_media(p) for p in inputs],'outro_supplied':bool(outro),'premium_transition_effects':not args.no_premium_effects,'premium_animation_effects':not args.no_animation_effects,'transition_intensity':args.transition_intensity,'transition_families':args.transition_family or TRANSITION_POOLS.get(args.style,TRANSITION_POOLS['premium']),'animations':animations,'transitions':audit},indent=2))
+    source_usage=[{'source_index':idx,'upload_number':idx+1,'shot_count':selected_sources.count(idx),'planned_duration':round(sum(d for source,d in zip(selected_sources,selected_source_durations) if source == idx),3)} for idx in range(len(inputs))]
+    print(json.dumps({'output':str(output),'duration':round(final_d,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'ai_video_remix':args.remix_ai_video,'remix_mode':args.remix_mode if args.remix_ai_video else None,'preserve_source_sequence':args.remix_ai_video and args.remix_mode == 're_edit','use_all_uploaded_videos':True,'all_uploaded_videos_used':all(item['shot_count'] > 0 for item in source_usage),'source_usage':source_usage,'automatic_vertical_reframe':True,'landscape_reframe':args.landscape_reframe,'source_media':[probe_media(p) for p in inputs],'outro_supplied':bool(outro),'premium_transition_effects':not args.no_premium_effects,'premium_animation_effects':not args.no_animation_effects,'transition_intensity':args.transition_intensity,'transition_families':args.transition_family or TRANSITION_POOLS.get(args.style,TRANSITION_POOLS['premium']),'animations':animations,'transitions':audit},indent=2))
 
 if __name__=='__main__': main()

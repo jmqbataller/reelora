@@ -1,13 +1,13 @@
 ---
 name: reelora
-description: Preservation-first automatic Reel director for uploaded raw product/fashion clips or an already-generated AI video, with an optional supplied ending/outro. Use it to re-edit or recreate a generated video from its existing frames, automatically convert landscape footage to a subject-safe 9:16 Reel, choose/cut/rearrange moments, crop/reframe, replace inconsistent source audio, add sparse premium transitions and real-pixel animation, validate integrity, and export a polished vertical Reel. Never add overlay text/objects/voice-over or generate replacement scenes, models, products, fabric, backgrounds, or missing pixels.
+description: Preservation-first automatic Reel director for uploaded raw product/fashion clips or one or many already-generated AI videos, with an optional supplied ending/outro. Use it to re-edit or recreate all uploaded generated videos from their existing frames, automatically convert landscape footage to a subject-safe 9:16 Reel, choose/cut/rearrange moments, crop/reframe, replace inconsistent source audio, add sparse premium transitions and real-pixel animation, validate integrity, and export a polished vertical Reel. Never add overlay text/objects/voice-over or generate replacement scenes, models, products, fabric, backgrounds, or missing pixels.
 ---
 
-# Reelora v0.7.0
+# Reelora v0.7.1
 
 ## Core workflow
 
-The user may upload one or many raw videos, or one already-generated AI video to re-edit/recreate. An ending/outro, music, and reference media are optional for AI-video remix mode.
+The user may upload one or many raw videos, or one or many already-generated AI videos to re-edit/recreate together. An ending/outro, music, and reference media are optional for AI-video remix mode.
 
 `Make this into a quality Reel. Highlight the top wear.`
 
@@ -27,7 +27,7 @@ When the user asks Reelora to actually edit uploaded videos, instructions alone 
 
 Execution priority:
 
-1. Prefer `reelora_remix_ai_video` for one uploaded generated video; otherwise use `reelora_edit` for raw clips.
+1. Prefer `reelora_remix_ai_videos` for multiple uploaded generated videos, `reelora_remix_ai_video` for exactly one, and `reelora_edit` for raw clips. Pass every uploaded source path—never only the first attachment.
 2. Otherwise, if FFmpeg/FFprobe and Python are available, run the bundled `scripts/reelora_edit.py` deterministic fallback.
 3. Only if neither executable path exists may Reelora return an edit plan instead of a finished MP4. Never pretend that music replacement, transitions, or rendering occurred when they did not.
 
@@ -47,7 +47,11 @@ When the user supplied a music file, add `--music MUSIC_FILE`. When no music is 
 
 ## Generated-video remix and landscape-to-Reel behavior
 
-When the user uploads an already-generated video and asks to recreate, remix, improve, or re-edit it, execute `reelora_remix_ai_video` or run the fallback with `--remix-ai-video`.
+When the user uploads already-generated video(s) and asks to recreate, remix, improve, or re-edit them, execute `reelora_remix_ai_videos` for multiple uploads, `reelora_remix_ai_video` for one, or run the fallback with repeated `--input` arguments plus `--remix-ai-video`.
+
+- Every uploaded video is mandatory by default. Each source must contribute at least one selected shot; balance shot counts so the difference between sources is at most one when practical.
+- In `re_edit`, keep upload order and chronological order within each source. In `recreate`, sources may be interleaved while still using them all.
+- If any upload is unreadable or yields no usable clips, stop with a clear error naming that upload. Never silently produce a Reel from only the first or highest-ranked video.
 
 - `re_edit` preserves chronological story order while trimming and rebuilding pacing.
 - `recreate` may reorder the strongest existing moments to reinterpret the edit.
@@ -157,6 +161,7 @@ At minimum:
 3. Confirm the reported `music_source` is `reelora-original` or `user-supplied` as appropriate.
 4. Check that the audit names the expected premium families, keeps effects sparse, and avoids a uniform repeated pattern.
 5. If any of these checks fail, treat the render as failed and re-render/fix the pipeline rather than presenting it as complete.
+6. For multiple uploads, require `allUploadedVideosUsed: true` (MCP) or `all_uploaded_videos_used: true` (fallback) and verify every source has `shotCount`/`shot_count` greater than zero in `sourceUsage`/`source_usage`.
 
 ## Integrity guards
 
@@ -218,6 +223,7 @@ Prefer Reelora MCP tools when available:
 - `reelora_analyze` — inspect source/candidates/vision data
 - `reelora_edit` — create finished Reel
 - `reelora_remix_ai_video` — re-edit/recreate one generated video and auto-reframe landscape footage to 9:16
+- `reelora_remix_ai_videos` — re-edit/recreate all uploaded generated videos together with mandatory balanced source coverage
 - `reelora_variants` — A/B style variants
 - `reelora_batch_edit` — multiple isolated product jobs
 - `reelora_revise_plan` — targeted structured revisions

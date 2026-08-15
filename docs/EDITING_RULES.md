@@ -4,7 +4,9 @@
 
 Reelora should make the editing decisions for the user after raw videos and an ending/outro are uploaded.
 
-When one already-generated video is uploaded, Reelora may re-edit it chronologically or recreate its edit structure from the strongest existing moments. It must not generate replacement scenes.
+When one or many already-generated videos are uploaded, Reelora may re-edit them chronologically or recreate the edit structure from the strongest existing moments. It must not generate replacement scenes.
+
+All uploaded videos are mandatory by default. Allocate at least one shot to every source, balance shot counts across sources, and expose per-upload usage in the render audit. If a source cannot be analyzed, fail clearly rather than silently editing only the first or strongest upload.
 
 It should automatically:
 
