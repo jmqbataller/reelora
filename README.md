@@ -12,13 +12,13 @@ Upload raw clips + a supplied ending/outro and give a short direction such as:
 Make these into a quality Reel. Highlight the top wear.
 ```
 
-Reelora handles clip selection, cutting, rearrangement, product-focused reframing, variable beat-aware pacing, automatic music replacement, mostly clean social-style cuts, sparse micro-transitions/flash accents, supplied-outro placement, validation, timeline/report exports, and final MP4 rendering without generating or replacing the original model, product, or fabric.
+Reelora handles clip selection, cutting, rearrangement, product-focused reframing, variable beat-aware pacing, automatic music replacement, sparse premium transitions, real-pixel spatial animation, supplied-outro placement, validation, timeline/report exports, and final MP4 rendering without generating or replacing the original model, product, or fabric.
 
 ## Download the ChatGPT Skill
 
-### Latest: Reelora v0.5.1
+### Latest: Reelora v0.6.0
 
-**[Download Reelora Skill v0.5.1 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.5.1/reelora-skill-v0.5.1.zip)**
+**[Download Reelora Skill v0.6.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.6.0/reelora-skill-v0.6.0.zip)**
 
 Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
@@ -28,18 +28,22 @@ Release history: [`CHANGELOG.md`](./CHANGELOG.md)
 
 Release verification steps: [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
 
-## v0.5.1 — executable music replacement + cleaner beat cuts
+## v0.6.0 — premium transitions + real-pixel animation
 
-v0.5.1 fixes the main problem discovered in the v0.5.0 standalone Skill package: the ZIP previously contained instructions and a runtime checker, but not the actual Reelora editor/music renderer.
+v0.6.0 replaces the old generic smooth-left/right motion selector with an FFmpeg-validated premium effect engine. Effects stay deterministic and preservation-first: they transform only the real uploaded frames and never synthesize a replacement model, garment, product, logo, fabric, or background.
 
-The latest Skill ZIP now includes:
+The premium transition library includes:
 
-```text
-reelora/scripts/check_reelora_runtime.py
-reelora/scripts/reelora_edit.py
-```
+- liquid splash / radial ripple
+- ink bloom
+- prism refraction
+- particle crystallize
+- cinematic light sweep
+- glass ripple
+- silk fold
+- luma bloom
 
-When Reelora MCP is unavailable but Python + FFmpeg + FFprobe are available, the Skill can run the bundled editor instead of only describing what should happen.
+The animation director adds restrained hero-frame breathing, product parallax, macro orbit, editorial depth float, kinetic product arc, and silk camera float. It deliberately avoids stock swing, slide, bounce, and repeated directional-wipe behavior.
 
 ### Audio replacement is now verifiable
 
@@ -60,9 +64,9 @@ The renderer reports metadata such as:
 }
 ```
 
-### Cleaner transition direction
+### Premium transition direction
 
-Reelora v0.5.1 is intentionally **cut-driven rather than transition-driven**.
+Reelora v0.6.0 remains cut-led, but its selected effect moments are now genuinely designed instead of generic.
 
 Default direction:
 
@@ -71,10 +75,12 @@ Default direction:
 - quick detail shots around 0.6–1.0s when appropriate;
 - normal product/focus shots around 0.9–1.7s;
 - longer hero/product holds around 1.5–2.6s when footage supports them;
-- rare micro-whip/motion accents, roughly every 5–7 transitions at most;
-- very short fade/dip accents, generally about 0.04–0.10s;
+- selected premium effect moments, usually every 3–5 transitions depending on style;
+- effect timing capped to about 0.10–0.34s, with subtle/balanced/bold intensity controls;
+- style-aware effect pools and optional explicit family allowlists;
 - no long repeated fashion dissolves;
-- no obvious transition effect on every cut.
+- no swing, bounce, ordinary slide carousel, or identical effect on every cut;
+- an outro-safe dip that does not disturb the supplied ending.
 
 For short Reels, flash should normally be zero or one small brightness accent around a stronger beat/drop rather than repeated flashes.
 
@@ -145,7 +151,10 @@ python3 scripts/reelora_edit.py \
   --outro outro.mp4 \
   --output final.mp4 \
   --style fashion \
-  --highlight top_wear
+  --highlight top_wear \
+  --transition-intensity balanced \
+  --transition-family liquid-splash \
+  --transition-family prism-refraction
 ```
 
 With a supplied song:
@@ -160,7 +169,7 @@ python3 scripts/reelora_edit.py \
   --highlight top_wear
 ```
 
-The script prints a JSON audit with music source, BPM, output duration, source-audio replacement status, and transition timing/type data.
+The script prints a JSON audit with music source, BPM, output duration, source-audio replacement status, premium animation labels, and transition family/timing/type data.
 
 ## Capability status is explicit
 
@@ -262,10 +271,10 @@ npm run build
 npm run pack:skill
 ```
 
-For v0.5.1 the generated file is:
+For v0.6.0 the generated file is:
 
 ```text
-dist-skill/reelora-skill-v0.5.1.zip
+dist-skill/reelora-skill-v0.6.0.zip
 ```
 
 If dependencies are already installed and you only need to rebuild the Skill package:

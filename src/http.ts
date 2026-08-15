@@ -23,7 +23,7 @@ app.use(
 );
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "reelora", version: "0.2.0", preservationMode: "strict-no-generative" });
+  res.json({ ok: true, service: "reelora", version: "0.6.0", preservationMode: "strict-no-generative" });
 });
 
 app.post("/mcp", async (req, res) => {

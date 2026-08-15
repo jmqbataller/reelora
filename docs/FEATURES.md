@@ -54,6 +54,11 @@ Reelora never generates/replaces the model, face, product, fabric, logo, print, 
 - Pose match cuts
 - Garment match cuts
 - Smart transition selection
+- Premium transition families: liquid splash, ink bloom, prism refraction, particle crystallize, light sweep, glass ripple, silk fold, and luma bloom
+- Transition intensity control: subtle, balanced, or bold
+- Explicit transition-family allowlists
+- Premium real-pixel animation: hero breathe, product parallax, macro orbit, editorial depth, kinetic arc, and silk camera float
+- Generic swing/slide/bounce avoidance
 - Speed-ramp hooks
 - High-FPS slow motion
 - Optical-flow safety guard hooks

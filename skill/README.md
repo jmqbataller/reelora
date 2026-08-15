@@ -32,8 +32,8 @@ The final render should be verified so that:
 
 ## Transition philosophy
 
-Modern Reelora edits are cut-driven, not transition-driven.
+Modern Reelora edits are cut-led with selected premium transition moments.
 
-Use mostly clean beat cuts, variable shot lengths, occasional very short micro-whip/motion or fade-black accents, and at most a restrained flash accent around a strong beat/drop. Avoid long dissolves, repeated wipes, identical timing, and obvious effects on every cut.
+Use mostly clean beat cuts and variable shot lengths, then add sparse liquid-splash, ink-bloom, prism-refraction, particle-crystallize, light-sweep, glass-ripple, silk-fold, or luma-bloom moments. Real-pixel animation may use product parallax, macro orbit, editorial depth, hero breathe, kinetic arc, or silk camera float. Avoid swing, slide, bounce, long dissolves, repeated wipes, identical timing, and obvious effects on every cut.
 
 All video processing must remain deterministic and use real source pixels only. Never regenerate the model, product, fabric, background, hands, face, logo, or print.

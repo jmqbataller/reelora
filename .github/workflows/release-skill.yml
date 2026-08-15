@@ -45,6 +45,9 @@ jobs:
       - name: Build backend
         run: npm run build
 
+      - name: Test premium effects and FFmpeg compatibility
+        run: npm test
+
       - name: Build ChatGPT Skill ZIP
         run: npm run pack:skill
 
@@ -117,7 +120,9 @@ jobs:
           TAG="v${VERSION}"
           ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
 
-          if [ "$VERSION" = "0.5.1" ]; then
+          if [ "$VERSION" = "0.6.0" ]; then
+            TITLE="Reelora v${VERSION} – Premium Transitions + Real-Pixel Animation"
+          elif [ "$VERSION" = "0.5.1" ]; then
             TITLE="Reelora v${VERSION} – Executable Music Replacement + Cleaner Beat Cuts"
           elif [ "$VERSION" = "0.5.0" ]; then
             TITLE="Reelora v${VERSION} – Trend-Inspired Music + Subtle Flash Accents"

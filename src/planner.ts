@@ -154,19 +154,27 @@ function transitionFor(index: number, options: ReeloraAdvancedOptions): PlannedS
   if (index === 0) return "cut";
   const mode = options.transitionMode ?? STYLE_PROFILES[options.style ?? "premium"].transitionMode;
   if (mode === "cuts") return "cut";
-  if (mode === "soft") return index % 5 === 0 ? "fade" : "cut";
-  if (mode === "motion") return index % 5 === 0 ? "motion" : "cut";
+  if (mode === "premium_fx") {
+    if (index % 3 === 0) return "motion";
+    if (index % 5 === 0) return "dissolve";
+    return "cut";
+  }
+  if (mode === "soft") return index % 4 === 0 ? "dissolve" : "cut";
+  if (mode === "motion") return index % 3 === 0 ? "motion" : "cut";
 
   const style = options.style ?? "premium";
   if (style === "fashion" || style === "fast_ecommerce") {
     if (index % 7 === 0) return "dissolve";
-    if (index % 5 === 0) return "motion";
+    if (index % 4 === 0) return "motion";
     return "cut";
   }
-  if (style === "luxury" || style === "cinematic") return index % 5 === 0 ? "dissolve" : "cut";
+  if (style === "luxury" || style === "cinematic") {
+    if (index % 5 === 0) return "dissolve";
+    return index % 4 === 0 ? "motion" : "cut";
+  }
   if (style === "minimal") return index % 6 === 0 ? "fade" : "cut";
-  if (index % 6 === 0) return "motion";
-  if (index % 5 === 0) return "fade";
+  if (index % 4 === 0) return "motion";
+  if (index % 7 === 0) return "fade";
   return "cut";
 }
 

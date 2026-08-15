@@ -15,7 +15,13 @@ const highlightSchema = z.enum([
 const audioModeSchema = z.enum(["silent", "music", "original", "mix"]);
 const styleSchema = z.enum(["premium", "minimal", "fashion", "fast_ecommerce", "cinematic", "luxury", "clean_commercial"]);
 const platformSchema = z.enum(["instagram_reels", "tiktok", "youtube_shorts", "facebook_reels"]);
-const transitionSchema = z.enum(["auto", "cuts", "soft", "motion"]);
+const transitionSchema = z.enum(["auto", "cuts", "soft", "motion", "premium_fx"]);
+const transitionIntensitySchema = z.enum(["subtle", "balanced", "bold"]);
+const animationIntensitySchema = z.enum(["off", "subtle", "balanced"]);
+const premiumTransitionFamilySchema = z.enum([
+  "liquid-splash", "ink-bloom", "prism-refraction", "particle-crystallize",
+  "light-sweep", "glass-ripple", "silk-fold", "luma-bloom",
+]);
 const encoderSchema = z.enum(["auto", "libx264", "h264_nvenc", "h264_qsv", "h264_amf"]);
 const timelineSchema = z.enum(["json", "csv", "edl"]);
 
@@ -41,7 +47,9 @@ const advancedOptionsSchema = z.object({
   stabilization: z.boolean().optional(), rollingShutterGuard: z.boolean().optional(), exposureFlickerCorrection: z.boolean().optional(), whiteBalanceConsistency: z.boolean().optional(), hdrSdrSafety: z.boolean().optional(), colorSpaceDetection: z.boolean().optional(),
   blurFilter: z.boolean().optional(), occlusionFilter: z.boolean().optional(), badPoseFilter: z.boolean().optional(), distractionFilter: z.boolean().optional(), mirrorReflectionGuard: z.boolean().optional(), variantBalance: z.boolean().optional(),
   singleModelConsistency: z.boolean().optional(), multiProductDetection: z.boolean().optional(), skuLock: z.string().optional(), heroVariant: z.string().optional(), referenceFace: z.string().optional(), referenceProduct: z.string().optional(), referenceReel: z.string().optional(),
-  brandProfile: z.string().optional(), transitionMode: transitionSchema.optional(), autoThumbnail: z.boolean().optional(), coverCrop: z.boolean().optional(), qualityReport: z.boolean().optional(), editDecisionReport: z.boolean().optional(),
+  brandProfile: z.string().optional(), transitionMode: transitionSchema.optional(), premiumTransitionEffects: z.boolean().optional(), transitionIntensity: transitionIntensitySchema.optional(),
+  transitionFamilies: z.array(premiumTransitionFamilySchema).min(1).max(8).optional(), premiumAnimationEffects: z.boolean().optional(), animationIntensity: animationIntensitySchema.optional(),
+  autoThumbnail: z.boolean().optional(), coverCrop: z.boolean().optional(), qualityReport: z.boolean().optional(), editDecisionReport: z.boolean().optional(),
   beforeAfterValidation: z.boolean().optional(), pixelPreservationAudit: z.boolean().optional(), generativeDetectionAudit: z.boolean().optional(), qualityThreshold: z.number().min(0).max(1).optional(), autoReeditOnValidationFailure: z.boolean().optional(),
   autoReeditUntilPass: z.boolean().optional(), noGenerativeMode: z.literal(true).optional(), proxyAnalysis: z.boolean().optional(), localVision: z.boolean().optional(), offlineMode: z.boolean().optional(), privacyMode: z.boolean().optional(), autoDeleteRawCache: z.boolean().optional(),
   hardwareEncoder: encoderSchema.optional(), targetFileSizeMb: z.number().min(2).max(2000).optional(), versionOutputs: z.boolean().optional(), confidenceThreshold: z.number().min(0).max(1).optional(), sixtyFpsOutput: z.boolean().optional(), proResMaster: z.boolean().optional(),
@@ -71,12 +79,12 @@ const revisionSchema = z.object({
 function textResult(value: unknown) { return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] }; }
 
 export function createReeloraMcpServer(): McpServer {
-  const server = new McpServer({ name: "reelora", version: "0.3.0" });
+  const server = new McpServer({ name: "reelora", version: "0.6.0" });
 
   server.registerTool("reelora_features", {
     title: "List Reelora capabilities",
     description: "Return Reelora's full preservation-first capability catalog, including implemented, adapter-ready, and planned desktop/vision integrations.", inputSchema: {},
-  }, async () => textResult({ version: "0.3.0", ...capabilitySummary(), featureIds: REELORA_FEATURES, capabilities: REELORA_CAPABILITY_CATALOG }));
+  }, async () => textResult({ version: "0.6.0", ...capabilitySummary(), featureIds: REELORA_FEATURES, capabilities: REELORA_CAPABILITY_CATALOG }));
 
   server.registerTool("reelora_diagnostics", {
     title: "Run Reelora diagnostics", description: "Check FFmpeg/FFprobe, compatible H.264 encoders, data directory access, and deterministic-renderer readiness.", inputSchema: {},
@@ -100,7 +108,7 @@ export function createReeloraMcpServer(): McpServer {
   }, async ({ rawVideos, highlight, options }) => textResult(await analyzeReeloraRequest({ rawVideos, highlight, options: options as ReeloraAdvancedOptions | undefined })));
 
   server.registerTool("reelora_edit", {
-    title: "Automatically edit a preservation-first Reel", description: "Take raw videos plus the uploaded ending video and do the editing automatically: choose the best moments, cut, rearrange, crop/reframe, use supplied vision regions, apply clean animation/transitions/fades, append the outro, validate preservation, export timelines/reports, and render 9:16 MP4. No overlay text, overlay objects, generated model/product pixels, or AI voice-over.",
+    title: "Automatically edit a preservation-first Reel", description: "Take raw videos plus the uploaded ending video and do the editing automatically: choose the best moments, cut, rearrange, crop/reframe, use supplied vision regions, apply sparse premium liquid/bloom/refraction/particle/light/glass/fabric/luma transitions and real-pixel spatial animation, append the outro, validate preservation, export timelines/reports, and render 9:16 MP4. No overlay text, overlay objects, generated model/product pixels, or AI voice-over.",
     inputSchema: editInputSchema,
   }, async (input) => textResult(await editReel({ ...input, options: input.options as ReeloraAdvancedOptions | undefined })));
 

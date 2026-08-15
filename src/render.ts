@@ -4,7 +4,7 @@ import crypto from "node:crypto";
 import { probeMedia, runFfmpeg } from "./ffmpeg.js";
 import { resolveEncoder } from "./hardware.js";
 import { PLATFORM_PROFILES, STYLE_PROFILES } from "./profiles.js";
-import { premiumTransitionSpec } from "./transitions.js";
+import { premiumAnimationSpec, premiumTransitionSpec } from "./transitions.js";
 import type { EditPlan, PlannedShot, RenderResult } from "./types.js";
 
 function quoteAudit(value: string): string {
@@ -28,7 +28,14 @@ function shotFilter(plan: EditPlan, shot: PlannedShot, index: number, total: num
   const width = platform.width;
   const height = platform.height;
   const fps = platform.fps;
-  const motion = plan.options.dynamicSubjectTracking ? style.motionAmount : 0;
+  const animation = premiumAnimationSpec(plan, shot.shotType, index);
+  const scaledWidth = Math.round(width * (1 + animation.overscan));
+  const scaledHeight = Math.round(height * (1 + animation.overscan));
+  const x = `'max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*${animation.xFrequency.toFixed(3)}+${animation.phase.toFixed(3)})*${animation.xAmplitude.toFixed(3)}))'`;
+  const centeredY = `(ih-${height})/2`;
+  const yBias = shot.shotType === "detail" ? `(ih-${height})*0.16` : `(ih-${height})*0.18`;
+  const yBase = shot.shotType === "whole_body" || shot.cropRegion ? centeredY : yBias;
+  const y = `'max(0\\,min(ih-${height}\\,${yBase}+cos(t*${animation.yFrequency.toFixed(3)}+${animation.phase.toFixed(3)})*${animation.yAmplitude.toFixed(3)}))'`;
   const fadeIn = index === 0 ? `,fade=t=in:st=0:d=${style.openingFade}` : "";
   const fadeOut = index === total - 1 && shot.targetDuration > style.endingFade
     ? `,fade=t=out:st=${Math.max(0, shot.targetDuration - style.endingFade).toFixed(3)}:d=${style.endingFade}`
@@ -36,25 +43,18 @@ function shotFilter(plan: EditPlan, shot: PlannedShot, index: number, total: num
   const speed = shot.playbackRate && shot.playbackRate !== 1 ? `,setpts=PTS/${shot.playbackRate.toFixed(3)}` : "";
   const cropPrefix = normalizedCropPrefix(shot);
 
-  if (shot.shotType === "whole_body") {
-    return `${cropPrefix}scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.65)*${motion}))':y='max(0\\,min(ih-${height}\\,(ih-${height})/2))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
-  }
-
-  if (shot.cropRegion) {
-    return `${cropPrefix}scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.7)*${motion}))':y='max(0\\,min(ih-${height}\\,(ih-${height})/2))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
-  }
-
-  if (shot.shotType === "detail") {
-    return `scale=${Math.round(width * 1.15)}:${Math.round(height * 1.15)}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.75)*${motion + 2}))':y='max(0\\,min(ih-${height}\\,(ih-${height})*0.16))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
-  }
-
-  return `scale=${width}:${height}:force_original_aspect_ratio=increase,crop=${width}:${height}:x='max(0\\,min(iw-${width}\\,(iw-${width})/2+sin(t*0.7)*${motion + 2}))':y='max(0\\,min(ih-${height}\\,(ih-${height})*0.18))',fps=${fps}${speed}${fadeIn}${fadeOut}`;
+  const detailBoost = shot.shotType === "detail" ? 1.1 : 1;
+  const sourceWidth = Math.round(scaledWidth * detailBoost);
+  const sourceHeight = Math.round(scaledHeight * detailBoost);
+  return `${cropPrefix}scale=${sourceWidth}:${sourceHeight}:force_original_aspect_ratio=increase,crop=${width}:${height}:x=${x}:y=${y},setsar=1,fps=${fps}${speed}${fadeIn}${fadeOut}`;
 }
 
 async function renderShot(plan: EditPlan, shot: PlannedShot, index: number, total: number, workDir: string, audit: string[]): Promise<string> {
   const output = path.join(workDir, `shot-${String(index).padStart(2, "0")}.mp4`);
   const encoder = resolveEncoder(plan.options.hardwareEncoder);
   const sourceDuration = Math.min(shot.duration, shot.targetDuration * (shot.playbackRate ?? 1));
+  const animation = premiumAnimationSpec(plan, shot.shotType, index);
+  audit.push(`animation ${index + 1}: ${animation.label} (real-pixel spatial motion, intensity=${plan.options.animationIntensity ?? "subtle"})`);
   await runLogged(audit, [
     "-y",
     "-ss",
@@ -136,7 +136,7 @@ function xfadeGraph(plan: EditPlan, durations: number[], audit: string[]): { gra
     const duration = Math.min(spec.duration, Math.max(0.03, durations[i - 1] * 0.25), Math.max(0.03, durations[i] * 0.25));
     const offset = Math.max(0.01, timeline - duration);
     filters.push(`[${previous}][${i}:v]xfade=transition=${spec.name}:duration=${duration.toFixed(3)}:offset=${offset.toFixed(3)}[${label}]`);
-    audit.push(`transition ${i}: ${spec.label} (${spec.name}, ${duration.toFixed(3)}s)`);
+    audit.push(`transition ${i}: ${spec.label} (${spec.name}, family=${spec.family}, premium=${spec.premium}, ${duration.toFixed(3)}s)`);
 
     const isOutroTransition = i >= plan.shots.length;
     if (subtleFlashEnabled(plan) && !isOutroTransition && i >= 2 && i % cadence === 0) {

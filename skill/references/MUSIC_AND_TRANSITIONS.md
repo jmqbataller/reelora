@@ -27,7 +27,10 @@ python3 scripts/reelora_edit.py \
   --outro outro.mp4 \
   --output final.mp4 \
   --style fashion \
-  --highlight top_wear
+  --highlight top_wear \
+  --transition-intensity balanced \
+  --transition-family liquid-splash \
+  --transition-family prism-refraction
 ```
 
 With supplied music:
@@ -102,20 +105,42 @@ Typical trend-inspired targets:
 
 The BPM is a pacing target, not permission to cut away important garment/product information.
 
-## Modern transition rules
+## Premium transition and real-pixel animation rules
 
-The goal is not to show off transitions. The goal is to make the product Reel feel professionally paced.
+The goal is to create a few memorable designed moments without turning the Reel into a transition template.
 
 Default priorities:
 
-- 70–90% of changes should feel like clean beat cuts or almost-instant fade bridges;
+- most changes should remain clean beat cuts or almost-instant fade bridges;
 - use variable shot lengths, not a repeated 1.4-second template cadence;
-- use a micro-whip/smooth motion accent only occasionally, roughly every 5–7 transitions at most;
-- keep motion transitions around 0.07–0.10 seconds;
-- keep short fades/dips around 0.04–0.09 seconds;
+- use one selected premium effect roughly every 3–5 transitions depending on style;
+- keep effect duration inside the 0.10–0.34 second safety range;
+- support `subtle`, `balanced`, and `bold` intensity;
 - avoid slow dissolves for fashion/ecommerce;
-- avoid repeating left/right/up/down patterns;
+- avoid stock swing, slide, bounce, and repeated directional-wipe patterns;
 - do not apply an obvious effect on every cut.
+
+Premium effect families:
+
+- `liquid-splash` — a fast radial ripple resembling a splash opening around the subject;
+- `ink-bloom` — an organic center bloom;
+- `prism-refraction` — an optical blur/refraction bridge;
+- `particle-crystallize` — a compact crystalline pixel resolve;
+- `light-sweep` — a short cinematic diagonal energy reveal;
+- `glass-ripple` — a lens-like circular collapse;
+- `silk-fold` — a fabric-inspired fold reveal;
+- `luma-bloom` — a short luminance dissolve.
+
+These are deterministic FFmpeg transitions between real uploaded frames. The names describe their visual direction; Reelora does not generate literal water, ink, glass, particles, fabric, or replacement product pixels.
+
+Premium animation families use only conservative crop, scale, and position changes:
+
+- hero-frame breathe;
+- product parallax orbit;
+- macro orbit drift;
+- editorial depth float;
+- kinetic product arc;
+- silk camera float.
 
 Suggested shot rhythm:
 
@@ -123,12 +148,12 @@ Suggested shot rhythm:
 - normal product/focus shot: roughly 0.9–1.7 seconds;
 - hero/product hold: roughly 1.5–2.6 seconds when source footage supports it.
 
-Transition personalities:
+Style personalities:
 
-- fashion / fast ecommerce: mostly hard beat cuts, occasional micro-whip or micro-dip;
-- premium / clean commercial: mostly clean cuts, rare short motion/fade accent;
-- luxury / cinematic: clean cuts with occasional short fade-black/micro-dip;
-- minimal: almost entirely cuts with rare short fade.
+- fashion / fast ecommerce: liquid, particle, ink, refraction, and occasional silk;
+- premium / clean commercial: liquid, light, refraction, glass, and luma;
+- luxury / cinematic: silk, glass, ink, refraction, and luma;
+- minimal: refraction, light, and luma only.
 
 Avoid transition spam. The product is always more important than the effect.
 
@@ -149,7 +174,7 @@ After rendering, verify:
 - final MP4 has an audio stream;
 - the executable fallback reports `source_audio_replaced: true`;
 - `music_source` is `reelora-original` or `user-supplied` as expected;
-- transition audit is mostly `beat-cut` / clean-cut rather than repeated long dissolves.
+- transition audit names premium families, keeps them sparse, and uses an `outro-safe-dip` into the supplied ending.
 
 If verification fails, do not present the render as finished.
 

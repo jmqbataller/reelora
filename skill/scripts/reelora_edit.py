@@ -22,6 +22,27 @@ RHYTHM_PATTERNS = {
     'clean_commercial': [2.0, 1.5, 2.5, 1.5, 2.0, 1.5, 2.5, 1.5],
 }
 
+PREMIUM_TRANSITIONS = {
+    'liquid-splash': ('radial', 0.240, 'liquid-splash-ripple'),
+    'ink-bloom': ('circleopen', 0.220, 'ink-bloom-matte'),
+    'prism-refraction': ('hblur', 0.170, 'prism-refraction-bridge'),
+    'particle-crystallize': ('pixelize', 0.150, 'particle-crystallize-resolve'),
+    'light-sweep': ('diagtl', 0.140, 'cinematic-light-sweep'),
+    'glass-ripple': ('circleclose', 0.200, 'glass-ripple-collapse'),
+    'silk-fold': ('squeezeh', 0.180, 'silk-fold-reveal'),
+    'luma-bloom': ('dissolve', 0.160, 'luma-bloom-resolve'),
+}
+
+TRANSITION_POOLS = {
+    'premium': ['liquid-splash', 'prism-refraction', 'light-sweep', 'glass-ripple', 'luma-bloom'],
+    'minimal': ['prism-refraction', 'light-sweep', 'luma-bloom'],
+    'fashion': ['liquid-splash', 'ink-bloom', 'particle-crystallize', 'prism-refraction', 'silk-fold'],
+    'fast_ecommerce': ['liquid-splash', 'particle-crystallize', 'light-sweep', 'prism-refraction'],
+    'luxury': ['silk-fold', 'glass-ripple', 'ink-bloom', 'luma-bloom'],
+    'cinematic': ['ink-bloom', 'glass-ripple', 'prism-refraction', 'luma-bloom'],
+    'clean_commercial': ['light-sweep', 'prism-refraction', 'liquid-splash', 'luma-bloom'],
+}
+
 def run(args):
     subprocess.run(args, check=True)
 
@@ -107,41 +128,58 @@ def source_windows(inputs, durations):
             out.append((p, max(0.0, d*frac)))
     return out
 
-def render_part(src, start, dur, output, width=1080, height=1920):
-    vf=(f"scale={width}:{height}:force_original_aspect_ratio=increase,"
-        f"crop={width}:{height}:(iw-{width})/2:(ih-{height})/2,fps=30")
+def animation_spec(style, index, enabled=True):
+    if not enabled:
+        return ('locked-static-frame', 0.0, 0.0, 0.0, 0.0, 0.0)
+    if index % 4 == 0:
+        return ('hero-frame-breathe', 0.010, 2.0, 1.5, 0.20, 0.16)
+    if style in ('fashion', 'fast_ecommerce'):
+        return ('kinetic-product-arc', 0.022, 8.0, 4.0, 0.42, 0.31)
+    if style in ('luxury', 'cinematic'):
+        return ('silk-camera-float', 0.016, 4.0, 3.0, 0.22, 0.18)
+    return ('product-parallax-orbit', 0.018, 6.0, 3.5, 0.30, 0.24)
+
+def render_part(src, start, dur, output, style='fashion', index=0, animation=True, width=1080, height=1920):
+    label, overscan, xamp, yamp, xfreq, yfreq = animation_spec(style, index, animation)
+    sw=round(width*(1+overscan)); sh=round(height*(1+overscan)); phase=index*0.73
+    x=f"max(0,min(iw-{width},(iw-{width})/2+sin(t*{xfreq:.3f}+{phase:.3f})*{xamp:.3f}))"
+    y=f"max(0,min(ih-{height},(ih-{height})/2+cos(t*{yfreq:.3f}+{phase:.3f})*{yamp:.3f}))"
+    vf=(f"scale={sw}:{sh}:force_original_aspect_ratio=increase,"
+        f"crop={width}:{height}:x='{x}':y='{y}',setsar=1,fps=30")
     run(['ffmpeg','-y','-ss',f'{start:.3f}','-t',f'{dur:.3f}','-i',str(src),'-vf',vf,'-an','-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p',str(output)])
+    return {'index': index+1, 'type': label, 'real_pixels_only': True}
 
 def render_outro(src, output, width=1080, height=1920):
     vf=(f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2:black,fps=30")
     run(['ffmpeg','-y','-i',str(src),'-vf',vf,'-an','-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p',str(output)])
 
-def transition_spec(style, i):
-    if style in ('fashion','fast_ecommerce'):
-        if i % 5 == 0: return ('smoothleft', 0.085, 'micro-whip')
-        if i % 7 == 0: return ('fadeblack', 0.065, 'micro-dip')
-        return ('fade', 0.025, 'beat-cut')
-    if style in ('luxury','cinematic'):
-        if i % 5 == 0: return ('fadeblack', 0.080, 'soft-dip')
-        return ('fade', 0.030, 'clean-cut')
-    if i % 6 == 0: return ('smoothleft', 0.075, 'micro-motion')
-    return ('fade', 0.025, 'clean-cut')
+def transition_spec(style, i, intensity='balanced', premium=True, outro=False, families=None):
+    if outro:
+        return ('fadeblack', 0.110, 'outro-safe-dip', 'outro-safe-dip', False)
+    cadence = 3 if style in ('fashion','fast_ecommerce') else 4
+    if not premium or i % cadence:
+        return ('fade', 0.025, 'beat-cut', 'beat-cut', False)
+    pool=families or TRANSITION_POOLS.get(style,TRANSITION_POOLS['premium'])
+    family=pool[(i*3+len(pool))%len(pool)]
+    name, duration, label=PREMIUM_TRANSITIONS[family]
+    scale={'subtle':0.76,'balanced':1.0,'bold':1.2}[intensity]
+    return (name, max(0.10,min(0.34,duration*scale)), label, family, True)
 
-def compose(parts, durations, output, music, style, flash=True):
+def compose(parts, durations, output, music, style, flash=True, premium=True, intensity='balanced', families=None):
     args=['ffmpeg','-y']
     for p in parts: args += ['-i',str(p)]
     args += ['-stream_loop','-1','-i',str(music)]
     filters=[]; prev='0:v'; timeline=durations[0]
     audit=[]
     for i in range(1,len(parts)):
-        name, td, label=transition_spec(style,i)
-        td=min(td, durations[i-1]*0.15, durations[i]*0.15)
+        name, td, label, family, is_premium=transition_spec(style,i,intensity,premium,i==len(parts)-1,families)
+        td=min(td, durations[i-1]*0.25, durations[i]*0.25)
         td=max(0.018, td)
         off=max(0.001,timeline-td)
         out=f'v{i}'
         filters.append(f'[{prev}][{i}:v]xfade=transition={name}:duration={td:.3f}:offset={off:.3f}[{out}]')
-        audit.append({'index':i,'type':label,'ffmpeg':name,'duration':round(td,3),'at':round(off,3)})
+        audit.append({'index':i,'type':label,'family':family,'premium':is_premium,'ffmpeg':name,'duration':round(td,3),'at':round(off,3),'real_pixels_only':True})
         prev=out; timeline += durations[i]-td
     if flash and len(parts) >= 5:
         moment=max(0.5, timeline*0.38)
@@ -167,6 +205,10 @@ def main():
     ap.add_argument('--content-duration', type=float, default=11.0, help='Seconds before outro.')
     ap.add_argument('--shots', type=int, default=8)
     ap.add_argument('--no-flash', action='store_true')
+    ap.add_argument('--no-premium-effects', action='store_true', help='Use clean beat cuts and an outro-safe dip only.')
+    ap.add_argument('--no-animation-effects', action='store_true', help='Disable premium real-pixel crop/parallax animation.')
+    ap.add_argument('--transition-intensity', default='balanced', choices=('subtle','balanced','bold'))
+    ap.add_argument('--transition-family', action='append', choices=sorted(PREMIUM_TRANSITIONS), help='Allow one premium family; repeat to build an allowlist.')
     args=ap.parse_args()
     ensure_tools()
     inputs=[Path(x).resolve() for x in args.input]
@@ -180,12 +222,15 @@ def main():
     windows=source_windows(inputs,src_durations)
     with tempfile.TemporaryDirectory(prefix='reelora-skill-') as td:
         td=Path(td); parts=[]; actual=[]
+        animations=[]
         for i,dur in enumerate(shot_durations):
             src,anchor=windows[i % len(windows)]
             src_d=probe_duration(src)
             start=min(max(0.0,anchor), max(0.0,src_d-dur-0.05))
             safe=min(dur,max(0.35,src_d-start-0.02))
-            part=td/f'shot-{i:02d}.mp4'; render_part(src,start,safe,part); parts.append(part); actual.append(safe)
+            part=td/f'shot-{i:02d}.mp4'
+            animations.append(render_part(src,start,safe,part,args.style,i,not args.no_animation_effects))
+            parts.append(part); actual.append(safe)
         outro_part=td/'outro.mp4'; render_outro(outro,outro_part); outro_d=probe_duration(outro_part)
         parts.append(outro_part); actual.append(outro_d)
         if args.music:
@@ -195,7 +240,7 @@ def main():
         else:
             music=td/'reelora-original.wav'; make_music(music,sum(actual)+1.0,bpm,mood); music_source='reelora-original'
         output.parent.mkdir(parents=True,exist_ok=True)
-        final_d,audit=compose(parts,actual,output,music,args.style,not args.no_flash)
-    print(json.dumps({'output':str(output),'duration':round(final_d,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'transitions':audit},indent=2))
+        final_d,audit=compose(parts,actual,output,music,args.style,not args.no_flash,not args.no_premium_effects,args.transition_intensity,args.transition_family)
+    print(json.dumps({'output':str(output),'duration':round(final_d,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'premium_transition_effects':not args.no_premium_effects,'premium_animation_effects':not args.no_animation_effects,'transition_intensity':args.transition_intensity,'transition_families':args.transition_family or TRANSITION_POOLS.get(args.style,TRANSITION_POOLS['premium']),'animations':animations,'transitions':audit},indent=2))
 
 if __name__=='__main__': main()
