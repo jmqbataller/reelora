@@ -2,6 +2,24 @@
 
 All notable changes to Reelora are documented here.
 
+## [0.7.2] - 2026-08-15
+
+### Fixed
+
+- Fixed generated-video remix accepting a near-identical resized pass-through instead of cutting and re-editing the uploaded source.
+- Fixed recreate mode retaining the original chronological order for single-source videos.
+- Fixed output validation treating a silent audio stream as successful music replacement.
+- Prevented supplied logo/outro media from being repurposed as a persistent watermark or overlay.
+
+### Added
+
+- Scene-isolated remix windows with boundary trims, redundant-scene omission, changed pacing, and a 90% maximum automatic source-timeline retention guard.
+- Deterministic non-chronological sequencing for `recreate`; `re_edit` remains chronological.
+- Rendered-output SSIM validation that rejects single-source remixes with normalized similarity of 0.94 or higher.
+- Audible-audio verification that rejects requested/default music below -55 dBFS peak.
+- Remix audit fields for selected source windows, detected scene times, material re-edit status, visual similarity, and audio peak.
+- Regression tests using the reported AI-video failure pattern plus real FFmpeg smoke renders for both remix modes.
+
 ## [0.7.1] - 2026-08-15
 
 ### Fixed

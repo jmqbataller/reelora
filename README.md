@@ -16,9 +16,9 @@ Reelora handles clip selection, generated-video remix, landscape-to-9:16 reframi
 
 ## Download the ChatGPT Skill
 
-### Latest: Reelora v0.7.1
+### Latest: Reelora v0.7.2
 
-**[Download Reelora Skill v0.7.1 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.7.1/reelora-skill-v0.7.1.zip)**
+**[Download Reelora Skill v0.7.2 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.7.2/reelora-skill-v0.7.2.zip)**
 
 Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
@@ -27,6 +27,18 @@ The ZIP contains a top-level `reelora/` Skill folder with `SKILL.md`, references
 Release history: [`CHANGELOG.md`](./CHANGELOG.md)
 
 Release verification steps: [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+
+## v0.7.2 — genuine AI-video re-edit and recreate
+
+Generated-video remix now has a material-change contract instead of accepting a resized copy with effects. Reelora detects the source scene cuts, isolates and trims real shot windows, removes redundant material, retimes the sequence, and validates the rendered result.
+
+- `re_edit` creates a shorter chronological recut with changed pacing.
+- `recreate` must deliberately reorder existing moments when enough scenes exist.
+- single-source output with normalized visual similarity of 94% or higher is rejected as pass-through;
+- automatic/default music must be audible, not merely present as a silent audio stream;
+- a supplied logo/outro is never promoted into a persistent watermark or full-video overlay.
+
+The regression source that exposed the bug previously retained identical cuts and measured 97.6% similarity. With v0.7.2, the same source produced a six-shot chronological re-edit at 66.2% similarity and a deliberately reordered recreate at 60.4% similarity, both with audible audio.
 
 ## v0.7.1 — every uploaded video is used
 
@@ -318,10 +330,10 @@ npm run build
 npm run pack:skill
 ```
 
-For v0.7.1 the generated file is:
+For v0.7.2 the generated file is:
 
 ```text
-dist-skill/reelora-skill-v0.7.1.zip
+dist-skill/reelora-skill-v0.7.2.zip
 ```
 
 If dependencies are already installed and you only need to rebuild the Skill package:

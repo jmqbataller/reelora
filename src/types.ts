@@ -234,6 +234,7 @@ export interface CandidateSegment {
   sourceWidth?: number;
   sourceHeight?: number;
   sourceOrientation?: SourceOrientation;
+  sourceDuration?: number;
 }
 
 export interface PlannedShot extends CandidateSegment {
@@ -321,4 +322,9 @@ export interface RenderResult {
   timelinePaths?: string[];
   qualityReport?: QualityReport;
   ffmpegAudit?: string[];
+  remixValidation?: {
+    materiallyReedited: boolean;
+    visualSimilarityToSource?: number;
+    audioPeakDb?: number;
+  };
 }

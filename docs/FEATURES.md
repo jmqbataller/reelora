@@ -47,6 +47,11 @@ Reelora never generates/replaces the model, face, product, fabric, logo, print, 
 - Balanced round-robin source coverage with upload-order preservation in re-edit mode
 - Per-upload shot-count/duration audit and an explicit all-sources-used result
 - Optional outro for generated-video remix jobs
+- Scene-isolated remix windows with boundary trims and redundant-moment omission
+- Material remix validation with a 94% maximum normalized source similarity
+- Audible-audio validation with a -55 dBFS peak floor
+- Non-chronological single-source reconstruction in recreate mode
+- Logo/outro watermark prevention
 
 - Scene detection and candidate generation
 - Best-moment selection

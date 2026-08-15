@@ -1,6 +1,6 @@
 {
   "name": "reelora",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "private": false,
   "description": "Preservation-first Reel director with AI-video remix, automatic landscape-to-9:16 reframing, premium transitions, and real-pixel animation effects.",
   "type": "module",

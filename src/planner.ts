@@ -115,8 +115,52 @@ function chooseCandidate(
   const unusedCandidates = sourceCandidates.filter((candidate) => !used.some((item) => (
     item.sourcePath === candidate.sourcePath && item.start === candidate.start && item.duration === candidate.duration
   )));
-  const pool = unusedCandidates.length ? unusedCandidates : sourceCandidates;
+  const nonOverlapping = unusedCandidates.filter((candidate) => (
+    Math.max(0, ...used.map((item) => overlapRatio(candidate, item))) < 0.42
+  ));
+  const pool = nonOverlapping.length ? nonOverlapping : unusedCandidates.length ? unusedCandidates : sourceCandidates;
   return [...pool].sort((a, b) => candidateRank(b, shotType, used, options) - candidateRank(a, shotType, used, options))[0];
+}
+
+function sourceDurationTotal(candidates: CandidateSegment[], sourceIndices: number[]): number {
+  return sourceIndices.reduce((sum, sourceIndex) => {
+    const sourceCandidates = candidates.filter((candidate) => candidate.sourceIndex === sourceIndex);
+    const declared = Math.max(0, ...sourceCandidates.map((candidate) => candidate.sourceDuration ?? 0));
+    const observed = Math.max(0, ...sourceCandidates.map((candidate) => candidate.start + candidate.duration));
+    return sum + Math.max(declared, observed);
+  }, 0);
+}
+
+function rearrangeForRecreate(selected: Array<CandidateSegment & { shotType: ShotType }>, sourceIndices: number[]) {
+  const queues = new Map<number, Array<CandidateSegment & { shotType: ShotType }>>();
+  for (const sourceIndex of sourceIndices) {
+    const chronological = selected
+      .filter((shot) => shot.sourceIndex === sourceIndex)
+      .sort((a, b) => a.start - b.start);
+    const order: number[] = [];
+    if (chronological.length) order.push(Math.floor(chronological.length / 2));
+    let left = 0;
+    let right = chronological.length - 1;
+    while (order.length < chronological.length) {
+      if (!order.includes(left)) order.push(left);
+      if (!order.includes(right)) order.push(right);
+      left += 1;
+      right -= 1;
+    }
+    queues.set(sourceIndex, order.slice(0, chronological.length).map((index) => chronological[index]));
+  }
+
+  const output: Array<CandidateSegment & { shotType: ShotType }> = [];
+  let round = 0;
+  while ([...queues.values()].some((queue) => queue.length)) {
+    const sourceOrder = round % 2 === 0 ? sourceIndices : [...sourceIndices].reverse();
+    for (const sourceIndex of sourceOrder) {
+      const next = queues.get(sourceIndex)?.shift();
+      if (next) output.push(next);
+    }
+    round += 1;
+  }
+  return output;
 }
 
 function maximumSafeTotal(
@@ -218,17 +262,32 @@ export function buildEditPlan(args: {
   }
   const distribution = normalizeDistribution(options.distribution!);
   const style = STYLE_PROFILES[options.style ?? "premium"];
-  const automaticDuration = Math.max(8, Math.min(24, args.candidates.length * 1.15 * style.shotLengthMultiplier));
-  const requestedTotalRaw = Math.max(6, Math.min(args.targetContentDuration ?? automaticDuration, 45));
-  const slotCount = Math.max(10, Math.min(20, sourceIndices.length));
+  const generatedRemix = options.sourceKind === "generated_video";
+  const totalSourceDuration = sourceDurationTotal(args.candidates, sourceIndices);
+  const remixDurationFactor = options.remixMode === "recreate" ? 0.64 : 0.76;
+  const automaticDuration = generatedRemix
+    ? Math.min(24, totalSourceDuration * remixDurationFactor)
+    : Math.max(8, Math.min(24, args.candidates.length * 1.15 * style.shotLengthMultiplier));
+  const requestedBase = args.targetContentDuration ?? automaticDuration;
+  const requestedTotalRaw = generatedRemix
+    ? Math.max(1, Math.min(requestedBase, totalSourceDuration * 0.9, 45))
+    : Math.max(6, Math.min(requestedBase, 45));
+  const candidateLimit = sourceIndices.length === 1 && args.candidates.length >= 5
+    ? args.candidates.length - 1
+    : args.candidates.length;
+  const generatedSlots = Math.max(sourceIndices.length, Math.min(12, Math.round(totalSourceDuration * 0.55), candidateLimit));
+  const slotCount = generatedRemix
+    ? Math.max(Math.min(4, candidateLimit), generatedSlots)
+    : Math.max(10, Math.min(20, sourceIndices.length));
   if (options.useAllUploadedVideos !== false && sourceIndices.length > slotCount) {
     throw new Error(`Reelora received ${sourceIndices.length} uploaded videos but supports at most ${slotCount} sources in one guaranteed-coverage edit.`);
   }
   const counts = countsForDistribution(distribution, slotCount);
   const pattern = interleavedPattern(counts);
-  const requestedTotal = options.beatSync !== false && args.musicPath
+  const beatAdjustedTotal = options.beatSync !== false && args.musicPath
     ? beatFriendlyTotal(requestedTotalRaw, args.musicBpm, pattern.length)
     : requestedTotalRaw;
+  const requestedTotal = generatedRemix ? Math.min(beatAdjustedTotal, totalSourceDuration * 0.9) : beatAdjustedTotal;
   const selected: Array<CandidateSegment & { shotType: ShotType }> = [];
   const used: CandidateSegment[] = [];
 
@@ -243,7 +302,9 @@ export function buildEditPlan(args: {
     selected.push({ ...candidate, shotType });
   }
 
-  if (options.sourceKind === "generated_video" && options.preserveSourceSequence !== false) {
+  if (generatedRemix && options.remixMode === "recreate") {
+    selected.splice(0, selected.length, ...rearrangeForRecreate(selected, sourceIndices));
+  } else if (generatedRemix && options.preserveSourceSequence !== false) {
     selected.sort((a, b) => a.sourceIndex - b.sourceIndex || a.start - b.start);
   }
 

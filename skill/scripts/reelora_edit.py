@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import argparse, json, math, random, shutil, struct, subprocess, tempfile, wave
+import argparse, json, math, random, re, shutil, struct, subprocess, tempfile, wave
 from pathlib import Path
 
 PRESETS = {
@@ -44,7 +44,10 @@ TRANSITION_POOLS = {
 }
 
 def run(args):
-    subprocess.run(args, check=True)
+    command=list(args)
+    if command and command[0] == 'ffmpeg' and '-loglevel' not in command:
+        command=[command[0],'-hide_banner','-loglevel','error',*command[1:]]
+    subprocess.run(command, check=True)
 
 def capture(args):
     return subprocess.check_output(args, text=True)
@@ -70,6 +73,35 @@ def probe_media(path):
         'aspect_ratio': round(ratio, 5),
         'orientation': orientation,
     }
+
+def detect_scene_times(path, threshold=0.22):
+    result=subprocess.run([
+        'ffmpeg','-hide_banner','-i',str(path),'-vf',f"select='gt(scene,{threshold})',showinfo",
+        '-an','-f','null','-'
+    ],text=True,capture_output=True)
+    values=[float(match) for match in re.findall(r'pts_time:([0-9.]+)',result.stderr)]
+    return sorted(set(value for value in values if value > 0.1))
+
+def probe_audio_peak_db(path):
+    result=subprocess.run([
+        'ffmpeg','-hide_banner','-i',str(path),'-af','volumedetect','-f','null','-'
+    ],text=True,capture_output=True)
+    match=re.search(r'max_volume:\s*(-?[0-9.]+)\s*dB',result.stderr,re.I)
+    return float(match.group(1)) if match else None
+
+def measure_visual_similarity(source, output, duration):
+    if duration <= 0.5:
+        return None
+    graph=("[0:v]fps=12,scale=360:640:force_original_aspect_ratio=increase,crop=360:640,setsar=1[a];"
+           "[1:v]fps=12,scale=360:640:force_original_aspect_ratio=increase,crop=360:640,setsar=1[b];"
+           "[a][b]ssim")
+    result=subprocess.run([
+        'ffmpeg','-hide_banner','-t',f'{duration:.3f}','-i',str(source),
+        '-t',f'{duration:.3f}','-i',str(output),'-filter_complex',graph,
+        '-an','-f','null','-'
+    ],text=True,capture_output=True)
+    match=re.search(r'All:([0-9.]+)',result.stderr)
+    return float(match.group(1)) if match else None
 
 def ensure_tools():
     for exe in ('ffmpeg','ffprobe'):
@@ -138,7 +170,55 @@ def normalize_pattern(style, target, bpm, count):
     scale2 = target / sum(vals)
     return [v*scale2 for v in vals]
 
-def source_windows(inputs, durations, count=8, remix_mode=None):
+def scene_segments(duration, scenes=None, desired=4):
+    clean_scenes=sorted(set(t for t in (scenes or []) if 0.1 < t < duration-0.1))
+    boundaries=[0.0,*clean_scenes,duration]
+    segments=[]
+    for index in range(len(boundaries)-1):
+        raw_start,raw_end=boundaries[index],boundaries[index+1]
+        raw_duration=raw_end-raw_start
+        if raw_duration < 0.55:
+            continue
+        trim=min(0.12,max(0.035,raw_duration*0.065))
+        usable=min(3.2,raw_duration-trim*2)
+        if usable >= 0.55:
+            segments.append((raw_start+trim,usable))
+
+    # A long take with no scene cuts still needs multiple real edit windows.
+    if not clean_scenes and len(segments) < desired:
+        segment_duration=min(2.4,max(0.6,duration/max(desired,1)*0.82))
+        for index in range(desired):
+            fraction=(index+0.35)/max(desired,1)
+            start=min(max(0.04,duration*fraction-segment_duration/2),max(0.0,duration-segment_duration-0.04))
+            candidate=(start,min(segment_duration,max(0.55,duration-start-0.04)))
+            if not any(abs(existing[0]-candidate[0]) < 0.18 for existing in segments):
+                segments.append(candidate)
+    return sorted(segments,key=lambda item:item[0])
+
+def pick_evenly(items, count):
+    if count >= len(items):
+        return list(items)
+    if count <= 1:
+        return [items[len(items)//2]]
+    indices=[]
+    for index in range(count):
+        selected=round(index*(len(items)-1)/(count-1))
+        if selected not in indices:
+            indices.append(selected)
+    return [items[index] for index in indices]
+
+def recreate_sequence(items):
+    if len(items) < 2:
+        return list(items)
+    order=[len(items)//2]
+    left,right=0,len(items)-1
+    while len(order) < len(items):
+        if left not in order: order.append(left)
+        if right not in order: order.append(right)
+        left += 1; right -= 1
+    return [items[index] for index in order[:len(items)]]
+
+def source_windows(inputs, durations, count=8, remix_mode=None, scene_times=None):
     if not inputs:
         return []
     if count < len(inputs):
@@ -148,22 +228,29 @@ def source_windows(inputs, durations, count=8, remix_mode=None):
     for idx in range(count % len(inputs)):
         allocations[idx] += 1
 
-    if remix_mode == 're_edit':
-        out=[]
-        for source_index, p in enumerate(inputs):
+    if remix_mode in ('re_edit','recreate'):
+        scene_times=scene_times or [[] for _ in inputs]
+        queues=[]
+        for source_index,p in enumerate(inputs):
             source_count=allocations[source_index]
-            fractions=[0.04 + (0.88 * i / max(1, source_count - 1)) for i in range(source_count)]
-            out.extend((p, max(0.0, durations[source_index] * frac), source_index) for frac in fractions)
-        return out
+            candidates=scene_segments(durations[source_index],scene_times[source_index],source_count)
+            selected=pick_evenly(candidates,min(source_count,len(candidates)))
+            if len(selected) < source_count:
+                raise ValueError(f'Uploaded video {source_index+1} does not contain enough distinct edit windows.')
+            if remix_mode == 'recreate':
+                selected=recreate_sequence(selected)
+            queues.append([(p,start,source_index,window_duration) for start,window_duration in selected])
 
-    if remix_mode == 'recreate':
-        pattern=[0.05,0.55,0.28,0.78,0.42,0.66,0.16,0.90,0.34,0.72,0.22,0.84]
-        used=[0] * len(inputs); out=[]
-        for shot_index in range(count):
-            source_index=shot_index % len(inputs)
-            occurrence=used[source_index]; used[source_index] += 1
-            frac=pattern[(occurrence * len(inputs) + source_index) % len(pattern)]
-            out.append((inputs[source_index], max(0.0, durations[source_index] * frac), source_index))
+        if remix_mode == 're_edit':
+            return [window for queue in queues for window in queue]
+
+        out=[]; round_index=0
+        while any(queues):
+            source_order=range(len(inputs)) if round_index % 2 == 0 else reversed(range(len(inputs)))
+            for source_index in source_order:
+                if queues[source_index]:
+                    out.append(queues[source_index].pop(0))
+            round_index += 1
         return out
 
     out=[]
@@ -173,7 +260,8 @@ def source_windows(inputs, durations, count=8, remix_mode=None):
             if round_index >= allocations[source_index]:
                 continue
             frac=fractions[round_index % len(fractions)]
-            out.append((p, max(0.0, durations[source_index] * frac), source_index))
+            start=max(0.0,durations[source_index]*frac)
+            out.append((p,start,source_index,min(3.2,max(0.55,durations[source_index]-start-0.04))))
     return out
 
 def resolve_reframe_mode(width, height, requested='auto', has_tracked_region=False):
@@ -279,8 +367,8 @@ def main():
     ap.add_argument('--music', help='Optional supplied music. If omitted, Reelora generates an original trend-inspired instrumental.')
     ap.add_argument('--style', default='fashion', choices=sorted(PRESETS))
     ap.add_argument('--highlight', default='general')
-    ap.add_argument('--content-duration', type=float, default=11.0, help='Seconds before outro.')
-    ap.add_argument('--shots', type=int, default=8)
+    ap.add_argument('--content-duration', type=float, help='Seconds before outro. AI remix caps this below total source duration to prevent pass-through.')
+    ap.add_argument('--shots', type=int, help='Requested shot count. Omit for automatic genuine-remix pacing.')
     ap.add_argument('--no-flash', action='store_true')
     ap.add_argument('--no-premium-effects', action='store_true', help='Use clean beat cuts and an outro-safe dip only.')
     ap.add_argument('--no-animation-effects', action='store_true', help='Disable premium real-pixel crop/parallax animation.')
@@ -299,21 +387,41 @@ def main():
         if not p.exists(): raise SystemExit(f'Missing media: {p}')
     bpm,mood=choose_bpm(args.style,args.highlight)
     src_durations=[probe_duration(p) for p in inputs]
-    count=max(4,min(max(args.shots,len(inputs)),20))
-    shot_durations=normalize_pattern(args.style,max(6.0,min(args.content_duration,30.0)),bpm,count)
-    windows=source_windows(inputs,src_durations,count,args.remix_mode if args.remix_ai_video else None)
+    detected_scenes=[detect_scene_times(p) for p in inputs] if args.remix_ai_video else [[] for _ in inputs]
+    if args.shots is not None:
+        count=max(len(inputs),min(args.shots,20))
+    elif args.remix_ai_video:
+        available=sum(len(scene_segments(duration,detected_scenes[index],4)) for index,duration in enumerate(src_durations))
+        desired=max(len(inputs),min(12,round(sum(src_durations)*0.55)))
+        if len(inputs) == 1 and available >= 5:
+            available -= 1
+        count=max(min(4,available),min(desired,available))
+    else:
+        count=max(4,min(8,20))
+
+    if args.remix_ai_video:
+        factor=0.64 if args.remix_mode == 'recreate' else 0.76
+        automatic_target=min(24.0,sum(src_durations)*factor)
+        content_target=max(1.0,min(args.content_duration if args.content_duration is not None else automatic_target,sum(src_durations)*0.90,30.0))
+    else:
+        content_target=max(6.0,min(args.content_duration if args.content_duration is not None else 11.0,30.0))
+
+    shot_durations=normalize_pattern(args.style,content_target,bpm,count)
+    windows=source_windows(inputs,src_durations,count,args.remix_mode if args.remix_ai_video else None,detected_scenes)
     with tempfile.TemporaryDirectory(prefix='reelora-skill-') as td:
         td=Path(td); parts=[]; actual=[]
-        animations=[]; selected_sources=[]; selected_source_durations=[]
+        animations=[]; selected_sources=[]; selected_source_durations=[]; selected_windows=[]
         for i,dur in enumerate(shot_durations):
-            src,anchor,source_index=windows[i % len(windows)]
+            src,anchor,source_index,window_duration=windows[i % len(windows)]
             src_d=probe_duration(src)
-            start=min(max(0.0,anchor), max(0.0,src_d-dur-0.05))
-            safe=min(dur,max(0.35,src_d-start-0.02))
+            requested=min(dur,window_duration)
+            start=min(max(0.0,anchor), max(0.0,src_d-requested-0.05))
+            safe=min(requested,max(0.35,src_d-start-0.02))
             part=td/f'shot-{i:02d}.mp4'
             animation=render_part(src,start,safe,part,args.style,i,not args.no_animation_effects,args.landscape_reframe)
             animation['source_index']=source_index; animation['upload_number']=source_index+1
             animations.append(animation); selected_sources.append(source_index); selected_source_durations.append(safe)
+            selected_windows.append({'shot_index':i,'source_index':source_index,'upload_number':source_index+1,'start':round(start,3),'duration':round(safe,3)})
             parts.append(part); actual.append(safe)
         if outro:
             outro_part=td/'outro.mp4'; render_outro(outro,outro_part); outro_d=probe_duration(outro_part)
@@ -327,6 +435,15 @@ def main():
         output.parent.mkdir(parents=True,exist_ok=True)
         final_d,audit=compose(parts,actual,output,music,args.style,not args.no_flash,not args.no_premium_effects,args.transition_intensity,args.transition_family,bool(outro))
     source_usage=[{'source_index':idx,'upload_number':idx+1,'shot_count':selected_sources.count(idx),'planned_duration':round(sum(d for source,d in zip(selected_sources,selected_source_durations) if source == idx),3)} for idx in range(len(inputs))]
-    print(json.dumps({'output':str(output),'duration':round(final_d,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'ai_video_remix':args.remix_ai_video,'remix_mode':args.remix_mode if args.remix_ai_video else None,'preserve_source_sequence':args.remix_ai_video and args.remix_mode == 're_edit','use_all_uploaded_videos':True,'all_uploaded_videos_used':all(item['shot_count'] > 0 for item in source_usage),'source_usage':source_usage,'automatic_vertical_reframe':True,'landscape_reframe':args.landscape_reframe,'source_media':[probe_media(p) for p in inputs],'outro_supplied':bool(outro),'premium_transition_effects':not args.no_premium_effects,'premium_animation_effects':not args.no_animation_effects,'transition_intensity':args.transition_intensity,'transition_families':args.transition_family or TRANSITION_POOLS.get(args.style,TRANSITION_POOLS['premium']),'animations':animations,'transitions':audit},indent=2))
+    audio_peak_db=probe_audio_peak_db(output)
+    if audio_peak_db is None or audio_peak_db < -55:
+        raise SystemExit(f'Reelora render failed: replacement music/audio is effectively silent ({audio_peak_db} dB peak)')
+    visual_similarity=None
+    if args.remix_ai_video and len(inputs) == 1:
+        visual_similarity=measure_visual_similarity(inputs[0],output,min(src_durations[0],content_target,final_d))
+        if visual_similarity is not None and visual_similarity >= 0.94:
+            raise SystemExit(f'Reelora render failed: output is {visual_similarity*100:.1f}% visually identical to the source; a real cut/re-edit/rearrangement is required')
+    materially_reedited=not args.remix_ai_video or visual_similarity is None or visual_similarity < 0.94
+    print(json.dumps({'output':str(output),'duration':round(final_d,3),'content_target':round(content_target,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'audio_peak_db':audio_peak_db,'ai_video_remix':args.remix_ai_video,'remix_mode':args.remix_mode if args.remix_ai_video else None,'materially_reedited':materially_reedited,'visual_similarity_to_source':round(visual_similarity,6) if visual_similarity is not None else None,'preserve_source_sequence':args.remix_ai_video and args.remix_mode == 're_edit','use_all_uploaded_videos':True,'all_uploaded_videos_used':all(item['shot_count'] > 0 for item in source_usage),'source_usage':source_usage,'detected_scene_times':detected_scenes,'selected_windows':selected_windows,'automatic_vertical_reframe':True,'landscape_reframe':args.landscape_reframe,'source_media':[probe_media(p) for p in inputs],'outro_supplied':bool(outro),'premium_transition_effects':not args.no_premium_effects,'premium_animation_effects':not args.no_animation_effects,'transition_intensity':args.transition_intensity,'transition_families':args.transition_family or TRANSITION_POOLS.get(args.style,TRANSITION_POOLS['premium']),'animations':animations,'transitions':audit},indent=2))
 
 if __name__=='__main__': main()
