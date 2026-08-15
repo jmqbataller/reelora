@@ -5,6 +5,7 @@ import { probeMedia, runFfmpeg } from "./ffmpeg.js";
 import { resolveEncoder } from "./hardware.js";
 import { PLATFORM_PROFILES, STYLE_PROFILES } from "./profiles.js";
 import { premiumAnimationSpec, premiumTransitionSpec } from "./transitions.js";
+import { resolveVerticalReframe } from "./reframe.js";
 import type { EditPlan, PlannedShot, RenderResult } from "./types.js";
 
 function quoteAudit(value: string): string {
@@ -22,7 +23,7 @@ function normalizedCropPrefix(shot: PlannedShot): string {
   return `crop=w='iw*${region.width.toFixed(5)}':h='ih*${region.height.toFixed(5)}':x='iw*${region.x.toFixed(5)}':y='ih*${region.y.toFixed(5)}',`;
 }
 
-function shotFilter(plan: EditPlan, shot: PlannedShot, index: number, total: number): string {
+function shotFilter(plan: EditPlan, shot: PlannedShot, index: number, total: number): { filter: string; complex: boolean; reframe: string } {
   const platform = PLATFORM_PROFILES[plan.options.platform];
   const style = STYLE_PROFILES[plan.options.style];
   const width = platform.width;
@@ -42,11 +43,28 @@ function shotFilter(plan: EditPlan, shot: PlannedShot, index: number, total: num
     : "";
   const speed = shot.playbackRate && shot.playbackRate !== 1 ? `,setpts=PTS/${shot.playbackRate.toFixed(3)}` : "";
   const cropPrefix = normalizedCropPrefix(shot);
+  const sourceWidth = shot.sourceWidth ?? width;
+  const sourceHeight = shot.sourceHeight ?? height;
+  const reframe = resolveVerticalReframe({
+    width: sourceWidth,
+    height: sourceHeight,
+    requested: plan.options.autoVerticalReframe === false ? "smart_crop" : plan.options.landscapeReframeMode,
+    hasTrackedRegion: Boolean(shot.cropRegion),
+  });
 
   const detailBoost = shot.shotType === "detail" ? 1.1 : 1;
-  const sourceWidth = Math.round(scaledWidth * detailBoost);
-  const sourceHeight = Math.round(scaledHeight * detailBoost);
-  return `${cropPrefix}scale=${sourceWidth}:${sourceHeight}:force_original_aspect_ratio=increase,crop=${width}:${height}:x=${x}:y=${y},setsar=1,fps=${fps}${speed}${fadeIn}${fadeOut}`;
+  const renderWidth = Math.round(scaledWidth * detailBoost);
+  const renderHeight = Math.round(scaledHeight * detailBoost);
+  const post = `crop=${width}:${height}:x=${x}:y=${y},setsar=1,fps=${fps}${speed}${fadeIn}${fadeOut}`;
+  if (reframe === "blur_fill") {
+    const filter = `[0:v]split=2[bg][fg];[bg]scale=${renderWidth}:${renderHeight}:force_original_aspect_ratio=increase,crop=${renderWidth}:${renderHeight},gblur=sigma=28,eq=brightness=-0.055:saturation=0.82[bgv];[fg]scale=${renderWidth}:${renderHeight}:force_original_aspect_ratio=decrease[fgv];[bgv][fgv]overlay=(W-w)/2:(H-h)/2,${post}[vout]`;
+    return { filter, complex: true, reframe };
+  }
+  return {
+    filter: `${cropPrefix}scale=${renderWidth}:${renderHeight}:force_original_aspect_ratio=increase,${post}`,
+    complex: false,
+    reframe,
+  };
 }
 
 async function renderShot(plan: EditPlan, shot: PlannedShot, index: number, total: number, workDir: string, audit: string[]): Promise<string> {
@@ -54,7 +72,12 @@ async function renderShot(plan: EditPlan, shot: PlannedShot, index: number, tota
   const encoder = resolveEncoder(plan.options.hardwareEncoder);
   const sourceDuration = Math.min(shot.duration, shot.targetDuration * (shot.playbackRate ?? 1));
   const animation = premiumAnimationSpec(plan, shot.shotType, index);
+  const framing = shotFilter(plan, shot, index, total);
   audit.push(`animation ${index + 1}: ${animation.label} (real-pixel spatial motion, intensity=${plan.options.animationIntensity ?? "subtle"})`);
+  audit.push(`reframe ${index + 1}: source=${shot.sourceWidth ?? "?"}x${shot.sourceHeight ?? "?"}, orientation=${shot.sourceOrientation ?? "unknown"}, mode=${framing.reframe}, output=1080x1920`);
+  const filterArgs = framing.complex
+    ? ["-filter_complex", framing.filter, "-map", "[vout]"]
+    : ["-vf", framing.filter];
   await runLogged(audit, [
     "-y",
     "-ss",
@@ -63,8 +86,7 @@ async function renderShot(plan: EditPlan, shot: PlannedShot, index: number, tota
     sourceDuration.toFixed(3),
     "-i",
     shot.sourcePath,
-    "-vf",
-    shotFilter(plan, shot, index, total),
+    ...filterArgs,
     "-an",
     "-c:v",
     encoder.codec,
@@ -80,6 +102,7 @@ async function renderShot(plan: EditPlan, shot: PlannedShot, index: number, tota
 
 async function renderOutro(plan: EditPlan, workDir: string, audit: string[]): Promise<{ path: string; duration: number }> {
   const platform = PLATFORM_PROFILES[plan.options.platform];
+  if (!plan.outroPath) throw new Error("renderOutro requires a supplied outro path.");
   const info = await probeMedia(plan.outroPath);
   const output = path.join(workDir, "outro.mp4");
   const encoder = resolveEncoder(plan.options.hardwareEncoder);
@@ -293,9 +316,13 @@ export async function renderPlan(plan: EditPlan, outputPath: string, dataDir: st
       renderedShots.push(await renderShot(plan, plan.shots[i], i, plan.shots.length, workDir, audit));
     }
 
-    const outro = await renderOutro(plan, workDir, audit);
-    const parts = [...renderedShots, outro.path];
-    const durations = [...plan.shots.map((shot) => shot.targetDuration), outro.duration];
+    const parts = [...renderedShots];
+    const durations = [...plan.shots.map((shot) => shot.targetDuration)];
+    if (plan.outroPath) {
+      const outro = await renderOutro(plan, workDir, audit);
+      parts.push(outro.path);
+      durations.push(outro.duration);
+    }
     const silentCombined = path.join(workDir, "combined-silent.mp4");
     await combineVideo(plan, parts, durations, silentCombined, audit);
 

@@ -68,6 +68,7 @@ jobs:
                   "reelora/SKILL.md",
                   "reelora/manifest.json",
                   "reelora/references/MUSIC_AND_TRANSITIONS.md",
+                  "reelora/references/AI_VIDEO_REMIX_AND_REFRAME.md",
                   "reelora/scripts/check_reelora_runtime.py",
                   "reelora/scripts/reelora_edit.py"
               }
@@ -123,7 +124,9 @@ jobs:
           TAG="v${VERSION}"
           ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
 
-          if [ "$VERSION" = "0.6.0" ]; then
+          if [ "$VERSION" = "0.7.0" ]; then
+            TITLE="Reelora v${VERSION} – AI Video Remix + Auto 9:16 Reframe"
+          elif [ "$VERSION" = "0.6.0" ]; then
             TITLE="Reelora v${VERSION} – Premium Transitions + Real-Pixel Animation"
           elif [ "$VERSION" = "0.5.1" ]; then
             TITLE="Reelora v${VERSION} – Executable Music Replacement + Cleaner Beat Cuts"

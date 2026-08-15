@@ -37,6 +37,10 @@ export type PremiumTransitionFamily =
   | "silk-fold"
   | "luma-bloom";
 export type AnimationIntensity = "off" | "subtle" | "balanced";
+export type SourceKind = "raw_footage" | "generated_video";
+export type RemixMode = "re_edit" | "recreate";
+export type SourceOrientation = "portrait" | "landscape" | "square";
+export type LandscapeReframeMode = "auto" | "smart_crop" | "blur_fill";
 export type HardwareEncoder = "auto" | "libx264" | "h264_nvenc" | "h264_qsv" | "h264_amf";
 export type TimelineFormat = "json" | "csv" | "edl";
 export type ReviewState = "draft" | "review" | "approved";
@@ -133,6 +137,11 @@ export interface ReeloraAdvancedOptions {
   transitionFamilies?: PremiumTransitionFamily[];
   premiumAnimationEffects?: boolean;
   animationIntensity?: AnimationIntensity;
+  sourceKind?: SourceKind;
+  remixMode?: RemixMode;
+  preserveSourceSequence?: boolean;
+  autoVerticalReframe?: boolean;
+  landscapeReframeMode?: LandscapeReframeMode;
   autoThumbnail?: boolean;
   coverCrop?: boolean;
   qualityReport?: boolean;
@@ -198,6 +207,8 @@ export interface MediaInfo {
   height: number;
   fps: number;
   hasAudio: boolean;
+  aspectRatio: number;
+  orientation: SourceOrientation;
 }
 
 export interface CandidateSegment {
@@ -217,6 +228,9 @@ export interface CandidateSegment {
   sku?: string;
   cropRegion?: NormalizedRegion;
   confidence?: number;
+  sourceWidth?: number;
+  sourceHeight?: number;
+  sourceOrientation?: SourceOrientation;
 }
 
 export interface PlannedShot extends CandidateSegment {
@@ -233,7 +247,7 @@ export interface EditPlan {
   targetContentDuration: number;
   distribution: ShotDistribution;
   shots: PlannedShot[];
-  outroPath: string;
+  outroPath?: string;
   musicPath?: string;
   audioMode: AudioMode;
   options: Required<Pick<ReeloraAdvancedOptions,

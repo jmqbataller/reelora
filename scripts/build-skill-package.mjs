@@ -16,7 +16,7 @@ await mkdir(references, { recursive: true });
 await mkdir(scripts, { recursive: true });
 
 const baseSkill = await readFile(path.join(root, "SKILL.md"), "utf8");
-const musicDirective = `\n\n## Executable music and transition addendum\n\nFor automatic soundtrack replacement, beat-aware pacing, verified music-rights behavior, the sample-free Reelora original fallback, premium transition families, and real-pixel animation rules, read and follow \`references/MUSIC_AND_TRANSITIONS.md\`. When MCP is unavailable but Python + FFmpeg + FFprobe are available, run \`scripts/reelora_edit.py\` rather than stopping at instructions. Unless the user explicitly requests silence/original sound/mix, the automatic workflow must replace source clip audio with the selected/generated music bed and verify the final output. Never describe an unverified random track as copyright-free.\n`;
+const musicDirective = `\n\n## Executable media addendum\n\nFor automatic soundtrack replacement, beat-aware pacing, verified music-rights behavior, the sample-free Reelora original fallback, premium transition families, and real-pixel animation rules, read \`references/MUSIC_AND_TRANSITIONS.md\`. For one uploaded generated video or any landscape-to-Reel request, read \`references/AI_VIDEO_REMIX_AND_REFRAME.md\`. When MCP is unavailable but Python + FFmpeg + FFprobe are available, run \`scripts/reelora_edit.py\` rather than stopping at instructions. Unless the user explicitly requests silence/original sound/mix, the automatic workflow must replace source clip audio with the selected/generated music bed and verify the final output. Never describe an unverified random track as copyright-free.\n`;
 await writeFile(path.join(skillRoot, "SKILL.md"), `${baseSkill.trimEnd()}${musicDirective}`, "utf8");
 await cp(path.join(root, "skill", "README.md"), path.join(skillRoot, "README.md"));
 for (const file of ["EDITING_RULES.md", "PRESERVATION.md", "SHOT_DISTRIBUTION.md", "FEATURES.md"]) {
@@ -54,6 +54,18 @@ await writeFile(
         premiumRealPixelAnimations: true,
         avoidGenericTemplateMoves: ["swing", "slide", "bounce", "repeated directional wipe"],
         sparseFlash: true,
+        deterministicRealPixelsOnly: true
+      },
+      aiVideoRemixDefaults: {
+        enabled: true,
+        modes: ["re_edit", "recreate"],
+        recreateMeansEditStructureOnly: true,
+        optionalOutro: true,
+        automaticVerticalReframe: true,
+        output: "1080x1920",
+        landscapeModes: ["auto", "smart_crop", "blur_fill"],
+        noStretch: true,
+        noOutpaint: true,
         deterministicRealPixelsOnly: true
       },
       prohibitions: ["overlay-text", "overlay-objects", "ai-voice-over", "generative-video-replacement"],

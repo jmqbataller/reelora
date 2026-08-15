@@ -1,6 +1,6 @@
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod";
-import { analyzeReeloraRequest, batchEditReels, createEditVariants, editReel, reeloraDataDir } from "./engine.js";
+import { analyzeReeloraRequest, batchEditReels, createEditVariants, editReel, reeloraDataDir, remixGeneratedVideo } from "./engine.js";
 import { REELORA_FEATURES } from "./features.js";
 import { REELORA_CAPABILITY_CATALOG, capabilitySummary } from "./feature-catalog.js";
 import { reeloraDiagnostics } from "./diagnostics.js";
@@ -18,6 +18,9 @@ const platformSchema = z.enum(["instagram_reels", "tiktok", "youtube_shorts", "f
 const transitionSchema = z.enum(["auto", "cuts", "soft", "motion", "premium_fx"]);
 const transitionIntensitySchema = z.enum(["subtle", "balanced", "bold"]);
 const animationIntensitySchema = z.enum(["off", "subtle", "balanced"]);
+const sourceKindSchema = z.enum(["raw_footage", "generated_video"]);
+const remixModeSchema = z.enum(["re_edit", "recreate"]);
+const landscapeReframeSchema = z.enum(["auto", "smart_crop", "blur_fill"]);
 const premiumTransitionFamilySchema = z.enum([
   "liquid-splash", "ink-bloom", "prism-refraction", "particle-crystallize",
   "light-sweep", "glass-ripple", "silk-fold", "luma-bloom",
@@ -49,6 +52,7 @@ const advancedOptionsSchema = z.object({
   singleModelConsistency: z.boolean().optional(), multiProductDetection: z.boolean().optional(), skuLock: z.string().optional(), heroVariant: z.string().optional(), referenceFace: z.string().optional(), referenceProduct: z.string().optional(), referenceReel: z.string().optional(),
   brandProfile: z.string().optional(), transitionMode: transitionSchema.optional(), premiumTransitionEffects: z.boolean().optional(), transitionIntensity: transitionIntensitySchema.optional(),
   transitionFamilies: z.array(premiumTransitionFamilySchema).min(1).max(8).optional(), premiumAnimationEffects: z.boolean().optional(), animationIntensity: animationIntensitySchema.optional(),
+  sourceKind: sourceKindSchema.optional(), remixMode: remixModeSchema.optional(), preserveSourceSequence: z.boolean().optional(), autoVerticalReframe: z.boolean().optional(), landscapeReframeMode: landscapeReframeSchema.optional(),
   autoThumbnail: z.boolean().optional(), coverCrop: z.boolean().optional(), qualityReport: z.boolean().optional(), editDecisionReport: z.boolean().optional(),
   beforeAfterValidation: z.boolean().optional(), pixelPreservationAudit: z.boolean().optional(), generativeDetectionAudit: z.boolean().optional(), qualityThreshold: z.number().min(0).max(1).optional(), autoReeditOnValidationFailure: z.boolean().optional(),
   autoReeditUntilPass: z.boolean().optional(), noGenerativeMode: z.literal(true).optional(), proxyAnalysis: z.boolean().optional(), localVision: z.boolean().optional(), offlineMode: z.boolean().optional(), privacyMode: z.boolean().optional(), autoDeleteRawCache: z.boolean().optional(),
@@ -79,12 +83,12 @@ const revisionSchema = z.object({
 function textResult(value: unknown) { return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] }; }
 
 export function createReeloraMcpServer(): McpServer {
-  const server = new McpServer({ name: "reelora", version: "0.6.0" });
+  const server = new McpServer({ name: "reelora", version: "0.7.0" });
 
   server.registerTool("reelora_features", {
     title: "List Reelora capabilities",
     description: "Return Reelora's full preservation-first capability catalog, including implemented, adapter-ready, and planned desktop/vision integrations.", inputSchema: {},
-  }, async () => textResult({ version: "0.6.0", ...capabilitySummary(), featureIds: REELORA_FEATURES, capabilities: REELORA_CAPABILITY_CATALOG }));
+  }, async () => textResult({ version: "0.7.0", ...capabilitySummary(), featureIds: REELORA_FEATURES, capabilities: REELORA_CAPABILITY_CATALOG }));
 
   server.registerTool("reelora_diagnostics", {
     title: "Run Reelora diagnostics", description: "Check FFmpeg/FFprobe, compatible H.264 encoders, data directory access, and deterministic-renderer readiness.", inputSchema: {},
@@ -111,6 +115,22 @@ export function createReeloraMcpServer(): McpServer {
     title: "Automatically edit a preservation-first Reel", description: "Take raw videos plus the uploaded ending video and do the editing automatically: choose the best moments, cut, rearrange, crop/reframe, use supplied vision regions, apply sparse premium liquid/bloom/refraction/particle/light/glass/fabric/luma transitions and real-pixel spatial animation, append the outro, validate preservation, export timelines/reports, and render 9:16 MP4. No overlay text, overlay objects, generated model/product pixels, or AI voice-over.",
     inputSchema: editInputSchema,
   }, async (input) => textResult(await editReel({ ...input, options: input.options as ReeloraAdvancedOptions | undefined })));
+
+  server.registerTool("reelora_remix_ai_video", {
+    title: "Re-edit or recreate an uploaded AI-generated video as a Reel",
+    description: "Analyze one uploaded generated video, rebuild its pacing from existing frames, optionally preserve or reinterpret source order, apply sparse premium transitions, and automatically convert landscape footage to a subject-safe 1080x1920 Reel. Auto reframing uses tracked crop regions when available and a blurred real-pixel fill otherwise; it never stretches the frame or generates replacement scenes.",
+    inputSchema: {
+      generatedVideo: z.string().min(1).describe("Uploaded/generated source video as a local path, mounted upload path, file:// URL, or HTTPS URL."),
+      outroVideo: z.string().min(1).optional().describe("Optional supplied ending/outro to preserve and append."),
+      music: z.string().min(1).optional(),
+      highlight: highlightSchema.default("general"),
+      remixMode: remixModeSchema.default("re_edit").describe("re_edit preserves chronological story order; recreate rebuilds the sequence from the strongest existing moments."),
+      targetDuration: z.number().min(6).max(45).optional(),
+      outputName: z.string().min(1).optional(),
+      audioMode: audioModeSchema.default("silent"),
+      options: advancedOptionsSchema.optional(),
+    },
+  }, async (input) => textResult(await remixGeneratedVideo({ ...input, options: input.options as ReeloraAdvancedOptions | undefined })));
 
   server.registerTool("reelora_variants", {
     title: "Generate A/B Reel variants", description: "Create three preservation-safe versions from the same raw footage: premium, fast ecommerce, and luxury pacing.", inputSchema: editInputSchema,

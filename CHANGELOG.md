@@ -2,6 +2,25 @@
 
 All notable changes to Reelora are documented here.
 
+## [0.7.0] - 2026-08-15
+
+### Added
+
+- `reelora_remix_ai_video` MCP tool for re-editing or recreating one uploaded AI-generated video as a finished Reel.
+- `re_edit` mode that preserves chronological story order while trimming and rebuilding pacing.
+- `recreate` mode that reinterprets the sequence from the strongest existing source moments without generating new scenes.
+- Automatic orientation metadata and landscape-to-1080x1920 Reels conversion.
+- Tracked subject/product smart crop plus a full-frame blurred-fill fallback derived only from the uploaded source pixels.
+- Optional outro support for AI-video remix jobs.
+- Matching `--remix-ai-video`, `--remix-mode`, and `--landscape-reframe` controls in the executable Skill fallback.
+- TypeScript/Python selector coverage and a real FFmpeg landscape remix smoke test path.
+
+### Preservation
+
+- “Recreate” rebuilds the edit structure only; it never generates replacement scenes, frames, products, models, backgrounds, or missing side content.
+- Landscape reframing never stretches or squashes the source.
+- Blurred fill is made from the same uploaded source frame and remains compatible with strict no-generative mode.
+
 ## [0.6.0] - 2026-08-15
 
 ### Added

@@ -50,8 +50,26 @@ def capture(args):
     return subprocess.check_output(args, text=True)
 
 def probe_duration(path):
-    data = json.loads(capture(['ffprobe','-v','error','-show_entries','format=duration','-of','json',str(path)]))
-    return float(data['format']['duration'])
+    return probe_media(path)['duration']
+
+def probe_media(path):
+    data = json.loads(capture([
+        'ffprobe','-v','error','-show_entries','format=duration:stream=codec_type,width,height,avg_frame_rate',
+        '-of','json',str(path)
+    ]))
+    video = next((stream for stream in data.get('streams', []) if stream.get('codec_type') == 'video'), None)
+    if not video or not video.get('width') or not video.get('height'):
+        raise SystemExit(f'No readable video stream: {path}')
+    width, height = int(video['width']), int(video['height'])
+    ratio = width / height
+    orientation = 'landscape' if ratio > 1.05 else 'portrait' if ratio < 0.95 else 'square'
+    return {
+        'duration': float(data['format']['duration']),
+        'width': width,
+        'height': height,
+        'aspect_ratio': round(ratio, 5),
+        'orientation': orientation,
+    }
 
 def ensure_tools():
     for exe in ('ffmpeg','ffprobe'):
@@ -120,13 +138,29 @@ def normalize_pattern(style, target, bpm, count):
     scale2 = target / sum(vals)
     return [v*scale2 for v in vals]
 
-def source_windows(inputs, durations):
+def source_windows(inputs, durations, count=8, remix_mode=None):
+    if remix_mode and len(inputs) == 1:
+        if remix_mode == 're_edit':
+            fractions = [0.04 + (0.88 * i / max(1, count - 1)) for i in range(count)]
+        else:
+            pattern = [0.05, 0.55, 0.28, 0.78, 0.42, 0.66, 0.16, 0.90, 0.34, 0.72, 0.22, 0.84]
+            fractions = [pattern[i % len(pattern)] for i in range(count)]
+        return [(inputs[0], max(0.0, durations[0] * frac)) for frac in fractions]
     out=[]
     for idx, p in enumerate(inputs):
         d=durations[idx]
         for frac in (0.12,0.42,0.72):
             out.append((p, max(0.0, d*frac)))
     return out
+
+def resolve_reframe_mode(width, height, requested='auto', has_tracked_region=False):
+    ratio = width / height
+    orientation = 'landscape' if ratio > 1.05 else 'portrait' if ratio < 0.95 else 'square'
+    if orientation == 'portrait': return 'native_portrait'
+    if orientation == 'square': return 'smart_crop'
+    if requested == 'smart_crop': return 'smart_crop'
+    if requested == 'blur_fill': return 'blur_fill'
+    return 'smart_crop' if has_tracked_region else 'blur_fill'
 
 def animation_spec(style, index, enabled=True):
     if not enabled:
@@ -139,15 +173,35 @@ def animation_spec(style, index, enabled=True):
         return ('silk-camera-float', 0.016, 4.0, 3.0, 0.22, 0.18)
     return ('product-parallax-orbit', 0.018, 6.0, 3.5, 0.30, 0.24)
 
-def render_part(src, start, dur, output, style='fashion', index=0, animation=True, width=1080, height=1920):
+def render_part(src, start, dur, output, style='fashion', index=0, animation=True, landscape_reframe='auto', width=1080, height=1920):
     label, overscan, xamp, yamp, xfreq, yfreq = animation_spec(style, index, animation)
+    info=probe_media(src)
+    reframe=resolve_reframe_mode(info['width'],info['height'],landscape_reframe)
     sw=round(width*(1+overscan)); sh=round(height*(1+overscan)); phase=index*0.73
     x=f"max(0,min(iw-{width},(iw-{width})/2+sin(t*{xfreq:.3f}+{phase:.3f})*{xamp:.3f}))"
     y=f"max(0,min(ih-{height},(ih-{height})/2+cos(t*{yfreq:.3f}+{phase:.3f})*{yamp:.3f}))"
-    vf=(f"scale={sw}:{sh}:force_original_aspect_ratio=increase,"
-        f"crop={width}:{height}:x='{x}':y='{y}',setsar=1,fps=30")
-    run(['ffmpeg','-y','-ss',f'{start:.3f}','-t',f'{dur:.3f}','-i',str(src),'-vf',vf,'-an','-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p',str(output)])
-    return {'index': index+1, 'type': label, 'real_pixels_only': True}
+    post=f"crop={width}:{height}:x='{x}':y='{y}',setsar=1,fps=30"
+    cmd=['ffmpeg','-y','-ss',f'{start:.3f}','-t',f'{dur:.3f}','-i',str(src)]
+    if reframe == 'blur_fill':
+        vf=(f"[0:v]split=2[bg][fg];"
+            f"[bg]scale={sw}:{sh}:force_original_aspect_ratio=increase,crop={sw}:{sh},gblur=sigma=28,eq=brightness=-0.055:saturation=0.82[bgv];"
+            f"[fg]scale={sw}:{sh}:force_original_aspect_ratio=decrease[fgv];"
+            f"[bgv][fgv]overlay=(W-w)/2:(H-h)/2,{post}[vout]")
+        cmd += ['-filter_complex',vf,'-map','[vout]']
+    else:
+        vf=f"scale={sw}:{sh}:force_original_aspect_ratio=increase,{post}"
+        cmd += ['-vf',vf]
+    cmd += ['-an','-c:v','libx264','-preset','veryfast','-crf','19','-pix_fmt','yuv420p',str(output)]
+    run(cmd)
+    return {
+        'index': index+1,
+        'type': label,
+        'real_pixels_only': True,
+        'source_orientation': info['orientation'],
+        'source_size': f"{info['width']}x{info['height']}",
+        'vertical_reframe': reframe,
+        'output_size': f'{width}x{height}',
+    }
 
 def render_outro(src, output, width=1080, height=1920):
     vf=(f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
@@ -166,14 +220,14 @@ def transition_spec(style, i, intensity='balanced', premium=True, outro=False, f
     scale={'subtle':0.76,'balanced':1.0,'bold':1.2}[intensity]
     return (name, max(0.10,min(0.34,duration*scale)), label, family, True)
 
-def compose(parts, durations, output, music, style, flash=True, premium=True, intensity='balanced', families=None):
+def compose(parts, durations, output, music, style, flash=True, premium=True, intensity='balanced', families=None, has_outro=True):
     args=['ffmpeg','-y']
     for p in parts: args += ['-i',str(p)]
     args += ['-stream_loop','-1','-i',str(music)]
     filters=[]; prev='0:v'; timeline=durations[0]
     audit=[]
     for i in range(1,len(parts)):
-        name, td, label, family, is_premium=transition_spec(style,i,intensity,premium,i==len(parts)-1,families)
+        name, td, label, family, is_premium=transition_spec(style,i,intensity,premium,has_outro and i==len(parts)-1,families)
         td=min(td, durations[i-1]*0.25, durations[i]*0.25)
         td=max(0.018, td)
         off=max(0.001,timeline-td)
@@ -197,7 +251,7 @@ def compose(parts, durations, output, music, style, flash=True, premium=True, in
 def main():
     ap=argparse.ArgumentParser(description='Reelora deterministic FFmpeg editor for ChatGPT Skill runtimes.')
     ap.add_argument('--input', action='append', required=True, help='Raw input video; repeat for multiple videos.')
-    ap.add_argument('--outro', required=True)
+    ap.add_argument('--outro', help='Optional supplied ending/outro. AI-video remix mode can render without one.')
     ap.add_argument('--output', required=True)
     ap.add_argument('--music', help='Optional supplied music. If omitted, Reelora generates an original trend-inspired instrumental.')
     ap.add_argument('--style', default='fashion', choices=sorted(PRESETS))
@@ -209,17 +263,22 @@ def main():
     ap.add_argument('--no-animation-effects', action='store_true', help='Disable premium real-pixel crop/parallax animation.')
     ap.add_argument('--transition-intensity', default='balanced', choices=('subtle','balanced','bold'))
     ap.add_argument('--transition-family', action='append', choices=sorted(PREMIUM_TRANSITIONS), help='Allow one premium family; repeat to build an allowlist.')
+    ap.add_argument('--remix-ai-video', action='store_true', help='Treat one generated video as the source and rebuild it into a Reel.')
+    ap.add_argument('--remix-mode', default='re_edit', choices=('re_edit','recreate'), help='re_edit preserves story order; recreate rebuilds the sequence from the strongest existing moments.')
+    ap.add_argument('--landscape-reframe', default='auto', choices=('auto','smart_crop','blur_fill'), help='Automatic landscape-to-9:16 behavior. auto uses blurred real-pixel fill when no tracked crop exists.')
     args=ap.parse_args()
     ensure_tools()
     inputs=[Path(x).resolve() for x in args.input]
-    outro=Path(args.outro).resolve(); output=Path(args.output).resolve()
-    for p in inputs+[outro]:
+    if args.remix_ai_video and len(inputs) != 1:
+        raise SystemExit('--remix-ai-video requires exactly one --input generated video')
+    outro=Path(args.outro).resolve() if args.outro else None; output=Path(args.output).resolve()
+    for p in inputs+([outro] if outro else []):
         if not p.exists(): raise SystemExit(f'Missing media: {p}')
     bpm,mood=choose_bpm(args.style,args.highlight)
     src_durations=[probe_duration(p) for p in inputs]
     count=max(4,min(args.shots,12))
     shot_durations=normalize_pattern(args.style,max(6.0,min(args.content_duration,30.0)),bpm,count)
-    windows=source_windows(inputs,src_durations)
+    windows=source_windows(inputs,src_durations,count,args.remix_mode if args.remix_ai_video else None)
     with tempfile.TemporaryDirectory(prefix='reelora-skill-') as td:
         td=Path(td); parts=[]; actual=[]
         animations=[]
@@ -229,10 +288,11 @@ def main():
             start=min(max(0.0,anchor), max(0.0,src_d-dur-0.05))
             safe=min(dur,max(0.35,src_d-start-0.02))
             part=td/f'shot-{i:02d}.mp4'
-            animations.append(render_part(src,start,safe,part,args.style,i,not args.no_animation_effects))
+            animations.append(render_part(src,start,safe,part,args.style,i,not args.no_animation_effects,args.landscape_reframe))
             parts.append(part); actual.append(safe)
-        outro_part=td/'outro.mp4'; render_outro(outro,outro_part); outro_d=probe_duration(outro_part)
-        parts.append(outro_part); actual.append(outro_d)
+        if outro:
+            outro_part=td/'outro.mp4'; render_outro(outro,outro_part); outro_d=probe_duration(outro_part)
+            parts.append(outro_part); actual.append(outro_d)
         if args.music:
             music=Path(args.music).resolve()
             if not music.exists(): raise SystemExit(f'Missing music: {music}')
@@ -240,7 +300,7 @@ def main():
         else:
             music=td/'reelora-original.wav'; make_music(music,sum(actual)+1.0,bpm,mood); music_source='reelora-original'
         output.parent.mkdir(parents=True,exist_ok=True)
-        final_d,audit=compose(parts,actual,output,music,args.style,not args.no_flash,not args.no_premium_effects,args.transition_intensity,args.transition_family)
-    print(json.dumps({'output':str(output),'duration':round(final_d,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'premium_transition_effects':not args.no_premium_effects,'premium_animation_effects':not args.no_animation_effects,'transition_intensity':args.transition_intensity,'transition_families':args.transition_family or TRANSITION_POOLS.get(args.style,TRANSITION_POOLS['premium']),'animations':animations,'transitions':audit},indent=2))
+        final_d,audit=compose(parts,actual,output,music,args.style,not args.no_flash,not args.no_premium_effects,args.transition_intensity,args.transition_family,bool(outro))
+    print(json.dumps({'output':str(output),'duration':round(final_d,3),'music_source':music_source,'music_mood':mood,'bpm':bpm,'source_audio_replaced':True,'ai_video_remix':args.remix_ai_video,'remix_mode':args.remix_mode if args.remix_ai_video else None,'preserve_source_sequence':args.remix_ai_video and args.remix_mode == 're_edit','automatic_vertical_reframe':True,'landscape_reframe':args.landscape_reframe,'source_media':[probe_media(p) for p in inputs],'outro_supplied':bool(outro),'premium_transition_effects':not args.no_premium_effects,'premium_animation_effects':not args.no_animation_effects,'transition_intensity':args.transition_intensity,'transition_families':args.transition_family or TRANSITION_POOLS.get(args.style,TRANSITION_POOLS['premium']),'animations':animations,'transitions':audit},indent=2))
 
 if __name__=='__main__': main()
