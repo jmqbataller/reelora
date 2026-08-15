@@ -6,19 +6,19 @@
 
 Reelora is a preservation-first automatic Reel director, FFmpeg renderer, MCP adapter, and installable ChatGPT Skill for product/fashion videos.
 
-Upload raw clips + a supplied ending/outro and give a short direction such as:
+Upload raw clips, or send one already-generated AI video to re-edit/recreate. A supplied ending/outro remains supported and is optional for AI-video remix mode.
 
 ```text
 Make these into a quality Reel. Highlight the top wear.
 ```
 
-Reelora handles clip selection, cutting, rearrangement, product-focused reframing, variable beat-aware pacing, automatic music replacement, sparse premium transitions, real-pixel spatial animation, supplied-outro placement, validation, timeline/report exports, and final MP4 rendering without generating or replacing the original model, product, or fabric.
+Reelora handles clip selection, generated-video remix, landscape-to-9:16 reframing, cutting, rearrangement, product-focused framing, beat-aware pacing, automatic music replacement, sparse premium transitions, real-pixel animation, optional-outro placement, validation, reports, and final MP4 rendering without generating replacement scenes, models, products, or fabric.
 
 ## Download the ChatGPT Skill
 
-### Latest: Reelora v0.6.0
+### Latest: Reelora v0.7.0
 
-**[Download Reelora Skill v0.6.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.6.0/reelora-skill-v0.6.0.zip)**
+**[Download Reelora Skill v0.7.0 ZIP](https://github.com/jmqbataller/reelora/releases/download/v0.7.0/reelora-skill-v0.7.0.zip)**
 
 Latest release page: **https://github.com/jmqbataller/reelora/releases/latest**
 
@@ -27,6 +27,29 @@ The ZIP contains a top-level `reelora/` Skill folder with `SKILL.md`, references
 Release history: [`CHANGELOG.md`](./CHANGELOG.md)
 
 Release verification steps: [`RELEASE_CHECKLIST.md`](./RELEASE_CHECKLIST.md)
+
+## v0.7.0 — AI-video remix + automatic landscape-to-Reel reframing
+
+Send Reelora one already-generated video and choose:
+
+- `re_edit` — keep the chronological story order while tightening pacing, music, transitions, and framing;
+- `recreate` — rebuild the edit from the strongest existing moments for a different Reel structure.
+
+“Recreate” does not generate new scenes. Both modes use only frames from the uploaded video.
+
+Landscape inputs are detected automatically and exported at 1080x1920, 9:16. If reliable subject/product regions exist, Reelora uses a tracked smart crop. Otherwise it keeps the full landscape frame over a tasteful blurred background made from the same source pixels—no stretching, black-bar requirement, outpainting, or invented sides.
+
+Executable fallback example without a separate outro:
+
+```bash
+python3 scripts/reelora_edit.py \
+  --input generated-video.mp4 \
+  --output generated-video-reel.mp4 \
+  --remix-ai-video \
+  --remix-mode re_edit \
+  --landscape-reframe auto \
+  --style premium
+```
 
 ## v0.6.0 — premium transitions + real-pixel animation
 
@@ -192,6 +215,7 @@ It returns every capability with one of these statuses:
 - `reelora_reference_style_dna` — derive safe pacing/framing DNA from reference-Reel observations
 - `reelora_analyze` — inspect raw sources/candidate moments/vision observations
 - `reelora_edit` — render the final Reel
+- `reelora_remix_ai_video` — re-edit/recreate one generated video and automatically convert landscape input to a 9:16 Reel
 - `reelora_variants` — premium / fast ecommerce / luxury variants
 - `reelora_batch_edit` — batch isolated product jobs
 - `reelora_revise_plan` — structured targeted edit-plan revisions
@@ -271,10 +295,10 @@ npm run build
 npm run pack:skill
 ```
 
-For v0.6.0 the generated file is:
+For v0.7.0 the generated file is:
 
 ```text
-dist-skill/reelora-skill-v0.6.0.zip
+dist-skill/reelora-skill-v0.7.0.zip
 ```
 
 If dependencies are already installed and you only need to rebuild the Skill package:

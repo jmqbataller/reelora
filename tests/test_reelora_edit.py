@@ -40,6 +40,19 @@ class PremiumEffectsTests(unittest.TestCase):
         self.assertEqual(reelora_edit.animation_spec("fashion", 1, True)[0], "kinetic-product-arc")
         self.assertEqual(reelora_edit.animation_spec("fashion", 1, False)[0], "locked-static-frame")
 
+    def test_landscape_auto_reframe_preserves_full_frame_without_stretching(self):
+        self.assertEqual(reelora_edit.resolve_reframe_mode(1920, 1080, "auto"), "blur_fill")
+        self.assertEqual(reelora_edit.resolve_reframe_mode(1920, 1080, "auto", True), "smart_crop")
+        self.assertEqual(reelora_edit.resolve_reframe_mode(1080, 1920, "auto"), "native_portrait")
+
+    def test_ai_video_reedit_windows_preserve_chronological_order(self):
+        windows = reelora_edit.source_windows(["generated.mp4"], [20.0], 8, "re_edit")
+        starts = [start for _, start in windows]
+        self.assertEqual(starts, sorted(starts))
+        recreated = reelora_edit.source_windows(["generated.mp4"], [20.0], 8, "recreate")
+        recreated_starts = [start for _, start in recreated]
+        self.assertNotEqual(recreated_starts, sorted(recreated_starts))
+
 
 if __name__ == "__main__":
     unittest.main()

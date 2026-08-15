@@ -16,6 +16,8 @@ A finished MP4 should use one of these paths:
 1. Reelora MCP backend exposing `reelora_edit`, or
 2. the bundled `scripts/reelora_edit.py` when Python + FFmpeg + FFprobe are available.
 
+For one uploaded generated video, prefer the MCP `reelora_remix_ai_video` tool or run the fallback with `--remix-ai-video`. It can preserve source order (`re_edit`) or rebuild the sequence from existing moments (`recreate`). Landscape input is automatically converted to 1080x1920 using tracked smart crop or a real-pixel blurred-fill fallback without stretching.
+
 The Skill must not stop at instructions when an executable path is available, and must never claim a render occurred when neither path ran.
 
 ## Automatic audio replacement

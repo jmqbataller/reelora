@@ -190,7 +190,7 @@ function beatFriendlyTotal(total: number, bpm: number | undefined, slots: number
 
 export function buildEditPlan(args: {
   candidates: CandidateSegment[];
-  outroPath: string;
+  outroPath?: string;
   musicPath?: string;
   musicBpm?: number;
   highlight: HighlightIntent;
@@ -218,6 +218,10 @@ export function buildEditPlan(args: {
     if (!candidate) continue;
     used.push(candidate);
     selected.push({ ...candidate, shotType });
+  }
+
+  if (options.sourceKind === "generated_video" && options.preserveSourceSequence !== false) {
+    selected.sort((a, b) => a.sourceIndex - b.sourceIndex || a.start - b.start);
   }
 
   if (!selected.length) throw new Error("Unable to construct a non-empty edit plan.");

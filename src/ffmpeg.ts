@@ -2,6 +2,7 @@ import { spawn } from "node:child_process";
 import { access } from "node:fs/promises";
 import { constants } from "node:fs";
 import type { MediaInfo } from "./types.js";
+import { detectSourceOrientation } from "./reframe.js";
 
 function run(command: string, args: string[], captureStderr = true): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
@@ -60,6 +61,7 @@ export async function probeMedia(path: string): Promise<MediaInfo> {
   const video = parsed.streams?.find((s) => s.codec_type === "video");
   if (!video?.width || !video?.height) throw new Error(`No readable video stream found: ${path}`);
 
+  const aspectRatio = video.width / video.height;
   return {
     path,
     duration: Number(parsed.format?.duration ?? 0),
@@ -67,6 +69,8 @@ export async function probeMedia(path: string): Promise<MediaInfo> {
     height: video.height,
     fps: parseFps(video.avg_frame_rate),
     hasAudio: Boolean(parsed.streams?.some((s) => s.codec_type === "audio")),
+    aspectRatio: Number(aspectRatio.toFixed(5)),
+    orientation: detectSourceOrientation(video.width, video.height),
   };
 }
 

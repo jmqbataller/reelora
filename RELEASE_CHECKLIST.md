@@ -7,7 +7,7 @@ Use this checklist before publishing a new ChatGPT Skill ZIP.
 - [ ] Confirm `package.json` contains the intended release version.
 - [ ] Confirm `README.md` Download ZIP link points to the same version.
 - [ ] Add the release entry to `CHANGELOG.md`.
-- [ ] Confirm `SKILL.md` describes executable fallback behavior, music replacement, premium transitions, and real-pixel animation.
+- [ ] Confirm `SKILL.md` describes AI-video remix, automatic landscape-to-9:16 reframing, executable fallback behavior, music replacement, premium transitions, and real-pixel animation.
 - [ ] Confirm `.env.example` documents current runtime defaults.
 
 ## 2. Local validation
@@ -22,10 +22,10 @@ npm test
 npm run pack:skill
 ```
 
-Expected ZIP for v0.6.0:
+Expected ZIP for v0.7.0:
 
 ```text
-dist-skill/reelora-skill-v0.6.0.zip
+dist-skill/reelora-skill-v0.7.0.zip
 ```
 
 - [ ] `npm install` completes successfully.
@@ -42,13 +42,14 @@ Open the ZIP and confirm these files exist:
 reelora/SKILL.md
 reelora/manifest.json
 reelora/references/MUSIC_AND_TRANSITIONS.md
+reelora/references/AI_VIDEO_REMIX_AND_REFRAME.md
 reelora/scripts/check_reelora_runtime.py
 reelora/scripts/reelora_edit.py
 ```
 
 - [ ] ZIP opens without corruption.
 - [ ] ZIP has one top-level `reelora/` folder.
-- [ ] `manifest.json` shows version `0.6.0`.
+- [ ] `manifest.json` shows version `0.7.0`.
 - [ ] `manifest.json` points `executableFallback.script` to `scripts/reelora_edit.py`.
 - [ ] `SKILL.md` requires actual rendering when MCP or local FFmpeg execution is available.
 
@@ -77,6 +78,21 @@ Repeat once with `--music supplied-song.mp3`:
 - [ ] JSON output reports `music_source: user-supplied`.
 - [ ] Supplied music is audible in the final MP4.
 
+Run one landscape AI-video remix without an outro:
+
+```bash
+python3 skill/scripts/reelora_edit.py \
+  --input generated-landscape.mp4 \
+  --output test-ai-remix.mp4 \
+  --remix-ai-video \
+  --remix-mode re_edit \
+  --landscape-reframe auto
+```
+
+- [ ] JSON reports `ai_video_remix: true` and `automatic_vertical_reframe: true`.
+- [ ] JSON reports the source as landscape and per-shot `vertical_reframe: blur_fill` when no tracked crop is available.
+- [ ] Final video is exactly 1080x1920 with no stretching or invented pixels.
+
 ## 5. Music and transition validation
 
 - [ ] Automatic music matches the requested style/highlight closely enough for the edit direction.
@@ -104,12 +120,12 @@ REELORA_FLASH_STRENGTH=0.08
 
 The repository workflow `.github/workflows/release-skill.yml` automatically builds and publishes the ZIP when release-relevant files are pushed to `main`.
 
-For v0.6.0, verify:
+For v0.7.0, verify:
 
 ```text
-Tag: v0.6.0
-Title: Reelora v0.6.0 – Premium Transitions + Real-Pixel Animation
-Asset: reelora-skill-v0.6.0.zip
+Tag: v0.7.0
+Title: Reelora v0.7.0 – AI Video Remix + Auto 9:16 Reframe
+Asset: reelora-skill-v0.7.0.zip
 ```
 
 - [ ] GitHub Actions `Reelora CI` passes.
@@ -121,7 +137,7 @@ Asset: reelora-skill-v0.6.0.zip
 
 ## 7. ChatGPT Skill upload test
 
-- [ ] Download `reelora-skill-v0.6.0.zip` from GitHub Releases.
+- [ ] Download `reelora-skill-v0.7.0.zip` from GitHub Releases.
 - [ ] Upload/install the ZIP in ChatGPT Skills.
 - [ ] Confirm the ZIP contains `scripts/reelora_edit.py`.
 - [ ] Run one product/fashion edit without supplying music and verify the song is actually replaced.

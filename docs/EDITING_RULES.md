@@ -4,6 +4,8 @@
 
 Reelora should make the editing decisions for the user after raw videos and an ending/outro are uploaded.
 
+When one already-generated video is uploaded, Reelora may re-edit it chronologically or recreate its edit structure from the strongest existing moments. It must not generate replacement scenes.
+
 It should automatically:
 
 - inspect all footage;
@@ -18,6 +20,8 @@ It should automatically:
 - synchronize cuts to supplied music beats when possible;
 - place the uploaded outro last;
 - export a polished vertical Reel.
+
+Landscape sources must be detected automatically and converted to 1080x1920. Prefer a tracked product/subject smart crop; when no safe tracked crop exists, preserve the full frame over a blurred background made from the same uploaded pixels. Never stretch or outpaint.
 
 ## Style target
 

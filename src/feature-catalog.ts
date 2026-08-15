@@ -26,6 +26,9 @@ export const REELORA_CAPABILITY_CATALOG: FeatureCapability[] = [
   cap("visual-rhythm-engine", "editing", "adapter_ready", "Use motion intensity and clip duration to control pacing in addition to music beats."),
   cap("premium-transition-engine", "editing", "implemented", "Render sparse liquid-splash, ink-bloom, prism-refraction, particle-crystallize, light-sweep, glass-ripple, silk-fold, and luma-bloom transitions from real source pixels."),
   cap("premium-animation-effects", "editing", "implemented", "Apply restrained macro-orbit, product-parallax, editorial-depth, hero-breathe, and silk-camera spatial animation without generating replacement pixels."),
+  cap("ai-generated-video-remix", "editing", "implemented", "Accept one uploaded generated video and rebuild it into a polished Reel using only its existing frames."),
+  cap("chronological-ai-video-reedit", "editing", "implemented", "Re-cut a generated video while preserving its chronological story order."),
+  cap("ai-video-recreate-edit", "editing", "implemented", "Reinterpret pacing and sequence from the strongest existing generated-video moments without generating replacement scenes."),
   cap("transition-intensity-control", "editing", "implemented", "Choose subtle, balanced, or bold premium transition timing while enforcing short product-safe limits."),
   cap("transition-family-control", "editing", "implemented", "Limit automatic premium effects to an explicit allowlist of transition families."),
   cap("motion-direction-matching", "editing", "planned", "Match left/right/up/down movement direction between adjacent cuts."),
@@ -47,6 +50,9 @@ export const REELORA_CAPABILITY_CATALOG: FeatureCapability[] = [
 
   // Framing/platform/export
   cap("platform-ui-safe-areas", "platform", "implemented", "Keep important subjects away from common social UI edge zones."),
+  cap("automatic-landscape-to-reels", "platform", "implemented", "Detect landscape input and render a 1080x1920 9:16 Reel automatically without stretching."),
+  cap("tracked-vertical-smart-crop", "platform", "implemented", "Use supplied product/face/body regions for subject-safe landscape-to-vertical cropping."),
+  cap("real-pixel-blur-fill", "platform", "implemented", "Preserve a full landscape frame over a blurred background derived from the same source pixels when a safe tracked crop is unavailable."),
   cap("responsive-reframe-presets", "export", "planned", "Generate 9:16, 4:5, 1:1, and 16:9 derivatives from one edit plan."),
   cap("platform-compression-simulation", "qa", "planned", "Estimate how social compression may affect fine fabric texture."),
   cap("compression-artifact-guard", "qa", "adapter_ready", "Check for blockiness/banding after export."),

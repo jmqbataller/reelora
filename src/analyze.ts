@@ -24,6 +24,7 @@ function candidateReasons(info: MediaInfo, isSceneBoundary: boolean): string[] {
   if (isSceneBoundary) reasons.push("scene-boundary");
   if (info.width * info.height >= 1080 * 1920) reasons.push("high-resolution");
   if (info.fps >= 50) reasons.push("high-frame-rate");
+  reasons.push(`${info.orientation}-source`);
   if (!reasons.length) reasons.push("usable-source-window");
   return reasons;
 }
@@ -54,6 +55,9 @@ export async function analyzeSources(paths: string[]): Promise<{ media: MediaInf
         duration: Number(duration.toFixed(3)),
         score: scoreSegment(info, anchor, duration, isSceneBoundary),
         reasons: candidateReasons(info, isSceneBoundary),
+        sourceWidth: info.width,
+        sourceHeight: info.height,
+        sourceOrientation: info.orientation,
       });
     }
 
@@ -67,6 +71,9 @@ export async function analyzeSources(paths: string[]): Promise<{ media: MediaInf
         duration: Number(duration.toFixed(3)),
         score: scoreSegment(info, start, duration, false),
         reasons: candidateReasons(info, false),
+        sourceWidth: info.width,
+        sourceHeight: info.height,
+        sourceOrientation: info.orientation,
       });
     }
   }

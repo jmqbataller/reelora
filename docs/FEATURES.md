@@ -41,6 +41,10 @@ Reelora never generates/replaces the model, face, product, fabric, logo, print, 
 
 ## Editing intelligence
 
+- Uploaded AI-generated video re-edit mode with chronological story preservation
+- Uploaded AI-generated video recreate mode using the strongest existing source moments
+- Optional outro for generated-video remix jobs
+
 - Scene detection and candidate generation
 - Best-moment selection
 - Duplicate-shot avoidance
@@ -98,6 +102,10 @@ Reelora never generates/replaces the model, face, product, fabric, logo, print, 
 ## Color, camera, and source normalization
 
 - Auto orientation
+- Automatic landscape detection and 1080x1920 Reels conversion
+- Tracked product/subject smart crop for landscape-to-vertical reframing
+- Full-frame real-pixel blurred-fill fallback when tracked regions are unavailable
+- No stretching, outpainting, or invented side content
 - Mixed-resolution support
 - VFR/frame-rate normalization
 - Stabilization support

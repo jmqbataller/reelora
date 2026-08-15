@@ -1,21 +1,25 @@
 ---
 name: reelora
-description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, replace inconsistent source audio with trend-inspired original or verified commercial-safe music, add sparse premium liquid/bloom/refraction/particle/light/glass/fabric/luma transitions and real-pixel spatial animation, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
+description: Preservation-first automatic Reel director for uploaded raw product/fashion clips or an already-generated AI video, with an optional supplied ending/outro. Use it to re-edit or recreate a generated video from its existing frames, automatically convert landscape footage to a subject-safe 9:16 Reel, choose/cut/rearrange moments, crop/reframe, replace inconsistent source audio, add sparse premium transitions and real-pixel animation, validate integrity, and export a polished vertical Reel. Never add overlay text/objects/voice-over or generate replacement scenes, models, products, fabric, backgrounds, or missing pixels.
 ---
 
-# Reelora v0.6.0
+# Reelora v0.7.0
 
 ## Core workflow
 
-The user may upload one or many raw videos, one ending/outro video, optional music, optional reference product/model/reel media, then give a short instruction such as:
+The user may upload one or many raw videos, or one already-generated AI video to re-edit/recreate. An ending/outro, music, and reference media are optional for AI-video remix mode.
 
 `Make this into a quality Reel. Highlight the top wear.`
+
+`Re-edit this generated video as a premium Reel. Keep the story order.`
+
+`Recreate the edit from this landscape AI video and convert it to Reels ratio.`
 
 Do not require manual timestamps or clip selection unless the user asks for manual control.
 
 Preferred workflow:
 
-`inspect → score moments → reject weak/duplicate/obstructed footage → build varied beat-aware shot plan → enforce requested product distribution → safe crop/reframe/track → clean beat cuts + sparse premium transitions + restrained real-pixel animation → replace source audio with trend-inspired or supplied music → preservation QA → supplied outro → verify rendered audio/video → export Reel + reports/timelines`
+`inspect → identify raw or generated-video source → score/segment existing moments → preserve or reinterpret source order → safe 9:16 reframe → clean beat cuts + sparse premium transitions + restrained real-pixel animation → replace source audio with trend-inspired or supplied music → preservation QA → optional supplied outro → verify rendered audio/video → export Reel + reports/timelines`
 
 ## Mandatory execution rule
 
@@ -23,7 +27,7 @@ When the user asks Reelora to actually edit uploaded videos, instructions alone 
 
 Execution priority:
 
-1. Prefer the Reelora MCP `reelora_edit` tool when connected.
+1. Prefer `reelora_remix_ai_video` for one uploaded generated video; otherwise use `reelora_edit` for raw clips.
 2. Otherwise, if FFmpeg/FFprobe and Python are available, run the bundled `scripts/reelora_edit.py` deterministic fallback.
 3. Only if neither executable path exists may Reelora return an edit plan instead of a finished MP4. Never pretend that music replacement, transitions, or rendering occurred when they did not.
 
@@ -41,6 +45,20 @@ python3 scripts/reelora_edit.py \
 
 When the user supplied a music file, add `--music MUSIC_FILE`. When no music is supplied, the script creates Reelora original trend-inspired instrumental audio and maps that audio into the final MP4.
 
+## Generated-video remix and landscape-to-Reel behavior
+
+When the user uploads an already-generated video and asks to recreate, remix, improve, or re-edit it, execute `reelora_remix_ai_video` or run the fallback with `--remix-ai-video`.
+
+- `re_edit` preserves chronological story order while trimming and rebuilding pacing.
+- `recreate` may reorder the strongest existing moments to reinterpret the edit.
+- Neither mode generates new scenes or replacement frames; “recreate” means recreate the edit structure only.
+- Detect source orientation automatically. Always output 1080x1920 9:16 for Reel platforms.
+- For landscape input, use tracked `smart_crop` when safe regions exist. Otherwise use `blur_fill`, derived from the same source pixels, so the full frame remains visible without stretching.
+- Do not outpaint, stretch, squash, or invent the cropped sides.
+- A supplied outro remains optional in generated-video remix mode and must be preserved when present.
+
+Read `references/AI_VIDEO_REMIX_AND_REFRAME.md` for the executable fallback commands and audit requirements.
+
 ## Absolute preservation rules
 
 Preserve the exact original model/person, face, skin tone, hairstyle, body proportions, hands, pose, product, fabric, texture, weave/ribbing, folds, shine, product color, print, logo, tags, neckline, sleeves, straps, pockets, stitching, length, fit, and construction.
@@ -51,7 +69,7 @@ Never generate, reconstruct, replace, redesign, outpaint, or hallucinate missing
 
 Never add overlay text, captions, price text, stickers, emojis, icons, decorative graphics, generated props/backgrounds/accessories/product parts, AI voice-over, narration, or synthetic speech.
 
-Existing content already inside the user-supplied outro is preserved as source media.
+Existing content already inside an optional user-supplied outro is preserved as source media.
 
 ## Product highlight behavior
 
@@ -110,7 +128,7 @@ Use these priorities:
 
 Use real-pixel animation only: hero-frame breathe, product parallax orbit, macro orbit drift, editorial depth float, kinetic product arc, or silk camera float. These are conservative crop/scale moves; never synthesize water, particles, fabric, product parts, or replacement frames.
 
-Fashion and fast-ecommerce may use liquid, particle, ink, or refraction moments. Luxury/cinematic may favor silk, glass, ink, and luma effects. Minimal/clean-commercial should favor refraction, light, and luma. Always use the outro-safe dip into the supplied ending.
+Fashion and fast-ecommerce may use liquid, particle, ink, or refraction moments. Luxury/cinematic may favor silk, glass, ink, and luma effects. Minimal/clean-commercial should favor refraction, light, and luma. Use the outro-safe dip whenever a supplied ending exists.
 
 Flash accents are optional accents only. Prefer a single restrained flash around a strong beat/drop in a short Reel. Never use rapid strobing, repeated full-white frames, aggressive flicker, or flash effects that reduce product readability.
 
@@ -199,6 +217,7 @@ Prefer Reelora MCP tools when available:
 - `reelora_reference_style_dna` — derive safe editing DNA metadata
 - `reelora_analyze` — inspect source/candidates/vision data
 - `reelora_edit` — create finished Reel
+- `reelora_remix_ai_video` — re-edit/recreate one generated video and auto-reframe landscape footage to 9:16
 - `reelora_variants` — A/B style variants
 - `reelora_batch_edit` — multiple isolated product jobs
 - `reelora_revise_plan` — targeted structured revisions

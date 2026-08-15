@@ -17,9 +17,21 @@ import type { AudioMode, HighlightIntent, ReeloraAdvancedOptions } from "./types
 
 export interface EditRequest {
   rawVideos: string[];
-  outroVideo: string;
+  outroVideo?: string;
   music?: string;
   highlight: HighlightIntent;
+  targetDuration?: number;
+  outputName?: string;
+  audioMode?: AudioMode;
+  options?: ReeloraAdvancedOptions;
+}
+
+export interface GeneratedVideoRemixRequest {
+  generatedVideo: string;
+  outroVideo?: string;
+  music?: string;
+  highlight?: HighlightIntent;
+  remixMode?: "re_edit" | "recreate";
   targetDuration?: number;
   outputName?: string;
   audioMode?: AudioMode;
@@ -143,7 +155,7 @@ export async function editReel(request: EditRequest) {
     for (let i = 0; i < request.rawVideos.length; i += 1) {
       rawPaths.push(await materializeMedia(request.rawVideos[i], inputDir, `raw-${i + 1}`));
     }
-    const outroPath = await materializeMedia(request.outroVideo, inputDir, "outro");
+    const outroPath = request.outroVideo ? await materializeMedia(request.outroVideo, inputDir, "outro") : undefined;
     const suppliedMusicPath = request.music ? await materializeMedia(request.music, inputDir, "music") : undefined;
     const musicSelection = await resolveMusicForEdit({
       suppliedMusicPath,
@@ -155,7 +167,10 @@ export async function editReel(request: EditRequest) {
     const musicPath = musicSelection?.path;
 
     const analysis = await analyzeSources(rawPaths);
-    const candidates = enrichCandidatesWithVision(analysis.candidates, options.visionObservations, request.highlight);
+    const analyzedCandidates = options.sourceKind === "generated_video"
+      ? analysis.candidates.map((candidate) => ({ ...candidate, reasons: [...candidate.reasons, "generated-video-remix-source"] }))
+      : analysis.candidates;
+    const candidates = enrichCandidatesWithVision(analyzedCandidates, options.visionObservations, request.highlight);
     const initialPlan = buildEditPlan({
       candidates,
       outroPath,
@@ -218,6 +233,10 @@ export async function editReel(request: EditRequest) {
         style: rendered.plan.options.style,
         platform: rendered.plan.options.platform,
         musicBpm: musicSelection?.bpm,
+        sourceKind: rendered.plan.options.sourceKind,
+        remixMode: rendered.plan.options.remixMode,
+        landscapeReframeMode: rendered.plan.options.landscapeReframeMode,
+        outputAspectRatio: "9:16",
         shots: rendered.plan.shots.map((shot) => ({
           sourceIndex: shot.sourceIndex,
           start: shot.start,
@@ -236,6 +255,28 @@ export async function editReel(request: EditRequest) {
   } finally {
     await rm(inputDir, { recursive: true, force: true });
   }
+}
+
+export async function remixGeneratedVideo(request: GeneratedVideoRemixRequest) {
+  const remixMode = request.remixMode ?? "re_edit";
+  return editReel({
+    rawVideos: [request.generatedVideo],
+    outroVideo: request.outroVideo,
+    music: request.music,
+    highlight: request.highlight ?? "general",
+    targetDuration: request.targetDuration,
+    outputName: request.outputName ?? `reelora-ai-${remixMode}-${Date.now()}.mp4`,
+    audioMode: request.audioMode,
+    options: {
+      ...request.options,
+      sourceKind: "generated_video",
+      remixMode,
+      preserveSourceSequence: request.options?.preserveSourceSequence ?? remixMode === "re_edit",
+      autoVerticalReframe: request.options?.autoVerticalReframe ?? true,
+      landscapeReframeMode: request.options?.landscapeReframeMode ?? "auto",
+      noGenerativeMode: true,
+    },
+  });
 }
 
 export async function batchEditReels(requests: EditRequest[]) {
