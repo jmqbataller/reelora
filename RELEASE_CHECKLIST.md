@@ -22,10 +22,10 @@ npm test
 npm run pack:skill
 ```
 
-Expected ZIP for v0.7.1:
+Expected ZIP for v0.7.2:
 
 ```text
-dist-skill/reelora-skill-v0.7.1.zip
+dist-skill/reelora-skill-v0.7.2.zip
 ```
 
 - [ ] `npm install` completes successfully.
@@ -49,7 +49,7 @@ reelora/scripts/reelora_edit.py
 
 - [ ] ZIP opens without corruption.
 - [ ] ZIP has one top-level `reelora/` folder.
-- [ ] `manifest.json` shows version `0.7.1`.
+- [ ] `manifest.json` shows version `0.7.2`.
 - [ ] `manifest.json` points `executableFallback.script` to `scripts/reelora_edit.py`.
 - [ ] `SKILL.md` requires actual rendering when MCP or local FFmpeg execution is available.
 
@@ -92,6 +92,13 @@ python3 skill/scripts/reelora_edit.py \
 - [ ] JSON reports `ai_video_remix: true` and `automatic_vertical_reframe: true`.
 - [ ] JSON reports the source as landscape and per-shot `vertical_reframe: blur_fill` when no tracked crop is available.
 - [ ] Final video is exactly 1080x1920 with no stretching or invented pixels.
+- [ ] JSON reports `materially_reedited: true`, `visual_similarity_to_source` below `0.94`, and `audio_peak_db` above `-55`.
+- [ ] Re-edit selected windows are trimmed and chronological, and the output retains no more than 90% of the source timeline.
+
+Repeat with `--remix-mode recreate`:
+
+- [ ] `selected_windows` are not in original chronological order when enough source scenes exist.
+- [ ] The resulting timeline is materially shorter/reordered rather than a resized copy with an outro or watermark.
 
 Run a three-video remix and pass every upload:
 
@@ -137,12 +144,12 @@ REELORA_FLASH_STRENGTH=0.08
 
 The repository workflow `.github/workflows/release-skill.yml` automatically builds and publishes the ZIP when release-relevant files are pushed to `main`.
 
-For v0.7.1, verify:
+For v0.7.2, verify:
 
 ```text
-Tag: v0.7.1
-Title: Reelora v0.7.1 – All Uploaded Videos Fix
-Asset: reelora-skill-v0.7.1.zip
+Tag: v0.7.2
+Title: Reelora v0.7.2 – Genuine AI Video Re-Edit
+Asset: reelora-skill-v0.7.2.zip
 ```
 
 - [ ] GitHub Actions `Reelora CI` passes.
@@ -154,12 +161,14 @@ Asset: reelora-skill-v0.7.1.zip
 
 ## 7. ChatGPT Skill upload test
 
-- [ ] Download `reelora-skill-v0.7.1.zip` from GitHub Releases.
+- [ ] Download `reelora-skill-v0.7.2.zip` from GitHub Releases.
 - [ ] Upload/install the ZIP in ChatGPT Skills.
 - [ ] Confirm the ZIP contains `scripts/reelora_edit.py`.
 - [ ] Run one product/fashion edit without supplying music and verify the song is actually replaced.
 - [ ] Run one edit with a supplied song and verify that supplied song is used.
 - [ ] Confirm selected transition moments feel premium and non-template while clean cuts still carry most of the Reel.
+- [ ] Confirm AI-video re-edit changes cuts/pacing and recreate reorders existing moments.
+- [ ] Confirm supplied logo/outro media appears only at the end, never as a full-video watermark.
 - [ ] Confirm preservation rules still apply.
 
 ## Release complete

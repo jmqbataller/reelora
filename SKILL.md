@@ -3,7 +3,7 @@ name: reelora
 description: Preservation-first automatic Reel director for uploaded raw product/fashion clips or one or many already-generated AI videos, with an optional supplied ending/outro. Use it to re-edit or recreate all uploaded generated videos from their existing frames, automatically convert landscape footage to a subject-safe 9:16 Reel, choose/cut/rearrange moments, crop/reframe, replace inconsistent source audio, add sparse premium transitions and real-pixel animation, validate integrity, and export a polished vertical Reel. Never add overlay text/objects/voice-over or generate replacement scenes, models, products, fabric, backgrounds, or missing pixels.
 ---
 
-# Reelora v0.7.1
+# Reelora v0.7.2
 
 ## Core workflow
 
@@ -55,6 +55,8 @@ When the user uploads already-generated video(s) and asks to recreate, remix, im
 
 - `re_edit` preserves chronological story order while trimming and rebuilding pacing.
 - `recreate` may reorder the strongest existing moments to reinterpret the edit.
+- A remix must be materially different from the uploaded edit. Detect scene boundaries, isolate shots, trim setup/tail frames, change pacing, and omit redundant material. `re_edit` remains chronological; `recreate` must produce a non-chronological inversion or cross-source reorder when enough shots exist.
+- For automatic single-source remixes, normally target about 76% of source duration in `re_edit` and 64% in `recreate`; never retain more than 90% of the source timeline unless the user explicitly requests near-full preservation.
 - Neither mode generates new scenes or replacement frames; “recreate” means recreate the edit structure only.
 - Detect source orientation automatically. Always output 1080x1920 9:16 for Reel platforms.
 - For landscape input, use tracked `smart_crop` when safe regions exist. Otherwise use `blur_fill`, derived from the same source pixels, so the full frame remains visible without stretching.
@@ -74,6 +76,8 @@ Never generate, reconstruct, replace, redesign, outpaint, or hallucinate missing
 Never add overlay text, captions, price text, stickers, emojis, icons, decorative graphics, generated props/backgrounds/accessories/product parts, AI voice-over, narration, or synthetic speech.
 
 Existing content already inside an optional user-supplied outro is preserved as source media.
+
+Never turn a supplied logo or outro into a persistent corner watermark, bug, or full-video overlay. A supplied outro appears only as the final outro unless the user explicitly requests separate branding.
 
 ## Product highlight behavior
 
@@ -162,6 +166,9 @@ At minimum:
 4. Check that the audit names the expected premium families, keeps effects sparse, and avoids a uniform repeated pattern.
 5. If any of these checks fail, treat the render as failed and re-render/fix the pipeline rather than presenting it as complete.
 6. For multiple uploads, require `allUploadedVideosUsed: true` (MCP) or `all_uploaded_videos_used: true` (fallback) and verify every source has `shotCount`/`shot_count` greater than zero in `sourceUsage`/`source_usage`.
+7. For generated-video remix, require `materiallyReedited: true` / `materially_reedited: true`. For a single source, reject normalized visual similarity of 0.94 or higher because it indicates pass-through or cosmetic-only output.
+8. Require audible requested/default music: an audio stream alone is insufficient. Reject a measured peak below -55 dBFS.
+9. Confirm the selected windows were actually trimmed and re-cut. `recreate` must not keep all single-source windows in chronological order when enough scenes exist.
 
 ## Integrity guards
 

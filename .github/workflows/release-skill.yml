@@ -124,7 +124,9 @@ jobs:
           TAG="v${VERSION}"
           ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
 
-          if [ "$VERSION" = "0.7.1" ]; then
+          if [ "$VERSION" = "0.7.2" ]; then
+            TITLE="Reelora v${VERSION} – Genuine AI Video Re-Edit"
+          elif [ "$VERSION" = "0.7.1" ]; then
             TITLE="Reelora v${VERSION} – All Uploaded Videos Fix"
           elif [ "$VERSION" = "0.7.0" ]; then
             TITLE="Reelora v${VERSION} – AI Video Remix + Auto 9:16 Reframe"

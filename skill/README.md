@@ -16,7 +16,7 @@ A finished MP4 should use one of these paths:
 1. Reelora MCP backend exposing `reelora_edit`, or
 2. the bundled `scripts/reelora_edit.py` when Python + FFmpeg + FFprobe are available.
 
-For multiple uploaded generated videos, prefer `reelora_remix_ai_videos` and include every upload; use `reelora_remix_ai_video` only for exactly one. The fallback accepts repeated `--input` arguments with `--remix-ai-video`. Every upload must contribute footage and the source-usage audit must confirm this. It can preserve upload/chronological order (`re_edit`) or rebuild the sequence from existing moments (`recreate`). Landscape input is automatically converted to 1080x1920 using tracked smart crop or a real-pixel blurred-fill fallback without stretching.
+For multiple uploaded generated videos, prefer `reelora_remix_ai_videos` and include every upload; use `reelora_remix_ai_video` only for exactly one. The fallback accepts repeated `--input` arguments with `--remix-ai-video`. Every upload must contribute footage and the source-usage audit must confirm this. It preserves chronological order while making real trims and pacing changes in `re_edit`; `recreate` must reorder existing moments when enough scenes exist. A 94%-or-higher visual match to a single source is rejected as pass-through. Landscape input is automatically converted to 1080x1920 using tracked smart crop or a real-pixel blurred-fill fallback without stretching.
 
 The Skill must not stop at instructions when an executable path is available, and must never claim a render occurred when neither path ran.
 
@@ -31,6 +31,9 @@ The final render should be verified so that:
 - it contains an audio stream;
 - the renderer reports `source_audio_replaced: true`;
 - the expected `music_source` is present.
+- measured audio peak is above -55 dBFS when music is expected.
+
+Generated-video remix audits must also report `materially_reedited: true`, the selected source windows, and visual similarity below 0.94 for a single source. Supplied outro/logo media stays at the end and is never converted into a persistent watermark.
 
 ## Transition philosophy
 

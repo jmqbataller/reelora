@@ -121,7 +121,7 @@ export async function analyzeReeloraRequest(request: AnalyzeRequest) {
 async function renderAndValidate(plan: ReturnType<typeof buildEditPlan>, outputPath: string, dataDir: string) {
   try {
     const render = await renderPlan(plan, outputPath, dataDir);
-    await validateRenderedOutput(outputPath);
+    render.remixValidation = await validateRenderedOutput(outputPath, plan);
     return { render, plan, fallbackUsed: false };
   } catch (error) {
     if (plan.options.autoReeditOnValidationFailure === false) throw error;
@@ -138,7 +138,7 @@ async function renderAndValidate(plan: ReturnType<typeof buildEditPlan>, outputP
     };
     validatePlan(fallbackPlan);
     const render = await renderPlan(fallbackPlan, outputPath, dataDir);
-    await validateRenderedOutput(outputPath);
+    render.remixValidation = await validateRenderedOutput(outputPath, fallbackPlan);
     render.warnings.push(`Automatic fail-safe re-edit was used after the first render attempt failed: ${error instanceof Error ? error.message : "unknown error"}`);
     return { render, plan: fallbackPlan, fallbackUsed: true };
   }

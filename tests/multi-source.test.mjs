@@ -17,6 +17,7 @@ function candidatesForSources(sourceCount, windowsPerSource = 5) {
       sourceWidth: 1920,
       sourceHeight: 1080,
       sourceOrientation: "landscape",
+      sourceDuration: windowsPerSource * 2 + 0.5,
     }))
   )).flat();
 }
@@ -42,7 +43,8 @@ test("planner guarantees balanced coverage across three uploaded videos", () => 
   ));
   assert.ok(sourceCounts.every((count) => count > 0));
   assert.ok(Math.max(...sourceCounts) - Math.min(...sourceCounts) <= 1);
-  assert.deepEqual(plan.shots.slice(0, 6).map((shot) => shot.sourceIndex), [0, 1, 2, 0, 1, 2]);
+  assert.deepEqual(new Set(plan.shots.map((shot) => shot.sourceIndex)), new Set([0, 1, 2]));
+  assert.ok(plan.shots.some((shot, index) => index > 0 && shot.sourceIndex < plan.shots[index - 1].sourceIndex));
 });
 
 test("chronological re-edit keeps upload order while retaining every source", () => {
@@ -62,6 +64,26 @@ test("chronological re-edit keeps upload order while retaining every source", ()
   const ordering = plan.shots.map((shot) => [shot.sourceIndex, shot.start]);
   assert.deepEqual(ordering, [...ordering].sort((a, b) => a[0] - b[0] || a[1] - b[1]));
   assert.deepEqual(new Set(plan.shots.map((shot) => shot.sourceIndex)), new Set([0, 1, 2]));
+  validatePlan(plan);
+});
+
+test("single-source recreate forces a non-chronological sequence", () => {
+  const plan = buildEditPlan({
+    candidates: candidatesForSources(1, 7),
+    highlight: "general",
+    options: {
+      sourceKind: "generated_video",
+      remixMode: "recreate",
+      preserveSourceSequence: false,
+      useAllUploadedVideos: true,
+      inputSourceCount: 1,
+      beatSync: false,
+    },
+  });
+  validatePlan(plan);
+  const starts = plan.shots.map((shot) => shot.start);
+  assert.notDeepEqual(starts, [...starts].sort((a, b) => a - b));
+  assert.ok(plan.targetContentDuration < 7 * 2 + 0.5);
 });
 
 test("planner fails visibly when an uploaded video has no usable candidate", () => {

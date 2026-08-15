@@ -46,6 +46,17 @@ python3 scripts/reelora_edit.py \
 
 Every upload must contribute at least one shot. `re_edit` keeps upload order and chronological moments inside each video; `recreate` may interleave sources. An unreadable/empty source is a visible failure, not permission to fall back to only the first video.
 
+## Material re-edit contract
+
+A resized, reframed, watermarked, or transition-wrapped copy of the original timeline is not a remix.
+
+- Detect existing scene cuts and isolate source windows between those boundaries.
+- Trim setup/tail frames, change shot lengths, omit redundant material, and rebuild the pacing.
+- Keep selected windows chronological in `re_edit`.
+- In `recreate`, require a non-chronological inversion or cross-source reorder when enough shots exist.
+- Automatic single-source remixes normally target about 76% of source duration for `re_edit` and 64% for `recreate`, and must retain no more than 90% of the original timeline.
+- Never turn a supplied logo/outro into a persistent watermark or overlay. Keep the supplied outro at the end only.
+
 Add `--outro OUTRO.mp4` only when the user supplies an ending. Add `--music MUSIC_FILE` when the user supplies music.
 
 ## Reframe rules
@@ -68,5 +79,9 @@ Require the JSON audit to report:
 - `source_audio_replaced: true` unless the user explicitly requested original audio behavior
 - `all_uploaded_videos_used: true`
 - one `source_usage` entry per upload, each with `shot_count` greater than zero
+- `materially_reedited: true`
+- `visual_similarity_to_source` below `0.94` for a single-source remix
+- `audio_peak_db` above `-55` when automatic or supplied music is expected
+- trimmed/re-cut `selected_windows`; recreate ordering must differ from the original chronology when enough scenes exist
 
 Probe the final MP4 and confirm 1080x1920 video plus an audio stream when automatic/supplied music is used.

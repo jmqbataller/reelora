@@ -98,3 +98,26 @@ export async function detectSceneTimes(path: string, threshold = 0.3): Promise<n
 export async function runFfmpeg(args: string[]): Promise<void> {
   await run("ffmpeg", args);
 }
+
+export async function probeAudioPeakDb(path: string): Promise<number | undefined> {
+  const { stderr } = await run("ffmpeg", ["-hide_banner", "-i", path, "-af", "volumedetect", "-f", "null", "-"]);
+  const match = stderr.match(/max_volume:\s*(-?[0-9.]+)\s*dB/i);
+  return match ? Number(match[1]) : undefined;
+}
+
+export async function measureVisualSimilarity(sourcePath: string, outputPath: string, duration: number): Promise<number | undefined> {
+  if (!Number.isFinite(duration) || duration <= 0.5) return undefined;
+  try {
+    const { stderr } = await run("ffmpeg", [
+      "-hide_banner", "-t", duration.toFixed(3), "-i", sourcePath,
+      "-t", duration.toFixed(3), "-i", outputPath,
+      "-filter_complex",
+      "[0:v]fps=12,scale=360:640:force_original_aspect_ratio=increase,crop=360:640,setsar=1[a];[1:v]fps=12,scale=360:640:force_original_aspect_ratio=increase,crop=360:640,setsar=1[b];[a][b]ssim",
+      "-an", "-f", "null", "-",
+    ]);
+    const match = stderr.match(/All:([0-9.]+)/);
+    return match ? Number(match[1]) : undefined;
+  } catch {
+    return undefined;
+  }
+}
