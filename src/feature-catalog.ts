@@ -34,6 +34,8 @@ export const REELORA_CAPABILITY_CATALOG: FeatureCapability[] = [
   cap("material-remix-validation", "qa", "implemented", "Reject generated-video output that retains too much source timeline or measures at least 94% normalized visual similarity to a single source."),
   cap("audible-remix-audio-validation", "qa", "implemented", "Reject requested/default music that exists only as a silent stream below -55 dBFS peak."),
   cap("no-logo-watermark-from-outro", "qa", "implemented", "Keep supplied logo/outro media in the final outro only instead of promoting it into a persistent overlay."),
+  cap("ordinary-chat-skill-invocation", "runtime", "implemented", "Package Reelora for ordinary ChatGPT conversations as well as Work, without requiring a surface switch before handling uploaded videos."),
+  cap("implicit-reelora-invocation", "runtime", "implemented", "Allow clear video-editing requests to select Reelora automatically while retaining explicit $reelora and @Reelora invocation."),
   cap("chronological-ai-video-reedit", "editing", "implemented", "Re-cut a generated video while preserving its chronological story order."),
   cap("ai-video-recreate-edit", "editing", "implemented", "Reinterpret pacing and sequence from the strongest existing generated-video moments without generating replacement scenes."),
   cap("transition-intensity-control", "editing", "implemented", "Choose subtle, balanced, or bold premium transition timing while enforcing short product-safe limits."),

@@ -2,6 +2,21 @@
 
 All notable changes to Reelora are documented here.
 
+## [0.7.3] - 2026-08-15
+
+### Added
+
+- Ordinary ChatGPT Chat compatibility alongside Work, with no Work-only invocation gate.
+- Packaged `agents/openai.yaml` UI metadata, Reelora icon, `$reelora` default prompt, and implicit invocation policy.
+- Manifest declarations for ordinary Chat, Work, explicit invocation, implicit invocation, and render-when-runtime-available behavior.
+- Release validation that rejects ZIPs missing Chat UI metadata or ordinary-Chat compatibility declarations.
+
+### Changed
+
+- Updated the skill trigger description so natural video-editing requests in ordinary Chat can select Reelora automatically.
+- Removed the auxiliary package README from the installable Skill ZIP to keep the portable skill focused on runtime instructions and resources.
+- Clarified that Reelora must render in the current Chat when media execution is available, and must never pretend rendering occurred when it is not.
+
 ## [0.7.2] - 2026-08-15
 
 ### Fixed

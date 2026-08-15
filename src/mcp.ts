@@ -84,12 +84,12 @@ const revisionSchema = z.object({
 function textResult(value: unknown) { return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }] }; }
 
 export function createReeloraMcpServer(): McpServer {
-  const server = new McpServer({ name: "reelora", version: "0.7.2" });
+  const server = new McpServer({ name: "reelora", version: "0.7.3" });
 
   server.registerTool("reelora_features", {
     title: "List Reelora capabilities",
     description: "Return Reelora's full preservation-first capability catalog, including implemented, adapter-ready, and planned desktop/vision integrations.", inputSchema: {},
-  }, async () => textResult({ version: "0.7.2", ...capabilitySummary(), featureIds: REELORA_FEATURES, capabilities: REELORA_CAPABILITY_CATALOG }));
+  }, async () => textResult({ version: "0.7.3", ...capabilitySummary(), featureIds: REELORA_FEATURES, capabilities: REELORA_CAPABILITY_CATALOG }));
 
   server.registerTool("reelora_diagnostics", {
     title: "Run Reelora diagnostics", description: "Check FFmpeg/FFprobe, compatible H.264 encoders, data directory access, and deterministic-renderer readiness.", inputSchema: {},

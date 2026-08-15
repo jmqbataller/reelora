@@ -10,6 +10,8 @@ on:
       - "CHANGELOG.md"
       - "RELEASE_CHECKLIST.md"
       - "docs/**"
+      - "agents/**"
+      - "assets/**"
       - "skill/**"
       - "src/**"
       - "scripts/build-skill-package.mjs"
@@ -66,6 +68,8 @@ jobs:
               names = set(z.namelist())
               required = {
                   "reelora/SKILL.md",
+                  "reelora/agents/openai.yaml",
+                  "reelora/assets/icon.svg",
                   "reelora/manifest.json",
                   "reelora/references/MUSIC_AND_TRANSITIONS.md",
                   "reelora/references/AI_VIDEO_REMIX_AND_REFRAME.md",
@@ -84,6 +88,19 @@ jobs:
               fallback = manifest.get("executableFallback", {})
               if fallback.get("script") != "scripts/reelora_edit.py":
                   raise SystemExit("Manifest does not point to executable Reelora editor")
+
+              surface = manifest.get("surfaceCompatibility", {})
+              if not surface.get("ordinaryChat") or not surface.get("implicitInvocation"):
+                  raise SystemExit("Manifest does not declare ordinary Chat compatibility")
+
+              metadata = z.read("reelora/agents/openai.yaml").decode("utf-8")
+              for required_text in (
+                  'display_name: "Reelora"',
+                  'default_prompt: "Use $reelora',
+                  'allow_implicit_invocation: true',
+              ):
+                  if required_text not in metadata:
+                      raise SystemExit(f"Missing Chat skill metadata: {required_text}")
 
               print(f"Verified {archive} with {len(names)} files; version={expected_version}")
           PY
@@ -124,7 +141,9 @@ jobs:
           TAG="v${VERSION}"
           ZIP="dist-skill/reelora-skill-v${VERSION}.zip"
 
-          if [ "$VERSION" = "0.7.2" ]; then
+          if [ "$VERSION" = "0.7.3" ]; then
+            TITLE="Reelora v${VERSION} – Chat + Work Compatibility"
+          elif [ "$VERSION" = "0.7.2" ]; then
             TITLE="Reelora v${VERSION} – Genuine AI Video Re-Edit"
           elif [ "$VERSION" = "0.7.1" ]; then
             TITLE="Reelora v${VERSION} – All Uploaded Videos Fix"

@@ -1,0 +1,10 @@
+interface:
+  display_name: "Reelora"
+  short_description: "Re-edit uploaded videos into premium vertical Reels"
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"
+  brand_color: "#FEBD08"
+  default_prompt: "Use $reelora to re-edit my uploaded video into a premium vertical Reel."
+
+policy:
+  allow_implicit_invocation: true

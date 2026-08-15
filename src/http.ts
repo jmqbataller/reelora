@@ -23,7 +23,7 @@ app.use(
 );
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "reelora", version: "0.7.2", preservationMode: "strict-no-generative", aiVideoRemix: true, materialRemixValidation: true, multiSourceCoverage: true, automaticVerticalReframe: true });
+  res.json({ ok: true, service: "reelora", version: "0.7.3", chatCompatible: true, implicitInvocation: true, preservationMode: "strict-no-generative", aiVideoRemix: true, materialRemixValidation: true, multiSourceCoverage: true, automaticVerticalReframe: true });
 });
 
 app.post("/mcp", async (req, res) => {
@@ -58,5 +58,5 @@ app.delete("/mcp", (_req, res) => {
 });
 
 app.listen(port, "0.0.0.0", () => {
-  console.log(`Reelora v0.7.2 MCP server listening on port ${port}`);
+  console.log(`Reelora v0.7.3 MCP server listening on port ${port}`);
 });

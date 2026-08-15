@@ -11,6 +11,8 @@ The generated ZIP contains a top-level `reelora/` folder with:
 
 ## Rendering paths
 
+Reelora can be invoked in an ordinary ChatGPT conversation or in Work. The packaged `agents/openai.yaml` enables implicit invocation and provides a `$reelora` starter prompt. Do not require a Work-mode switch when the current Chat already exposes an executable media runtime.
+
 A finished MP4 should use one of these paths:
 
 1. Reelora MCP backend exposing `reelora_edit`, or

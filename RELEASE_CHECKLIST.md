@@ -22,10 +22,10 @@ npm test
 npm run pack:skill
 ```
 
-Expected ZIP for v0.7.2:
+Expected ZIP for v0.7.3:
 
 ```text
-dist-skill/reelora-skill-v0.7.2.zip
+dist-skill/reelora-skill-v0.7.3.zip
 ```
 
 - [ ] `npm install` completes successfully.
@@ -40,6 +40,8 @@ Open the ZIP and confirm these files exist:
 
 ```text
 reelora/SKILL.md
+reelora/agents/openai.yaml
+reelora/assets/icon.svg
 reelora/manifest.json
 reelora/references/MUSIC_AND_TRANSITIONS.md
 reelora/references/AI_VIDEO_REMIX_AND_REFRAME.md
@@ -49,7 +51,9 @@ reelora/scripts/reelora_edit.py
 
 - [ ] ZIP opens without corruption.
 - [ ] ZIP has one top-level `reelora/` folder.
-- [ ] `manifest.json` shows version `0.7.2`.
+- [ ] `manifest.json` shows version `0.7.3`.
+- [ ] `agents/openai.yaml` includes a `$reelora` default prompt and `allow_implicit_invocation: true`.
+- [ ] `manifest.json` declares `ordinaryChat: true`, `workMode: true`, and `noWorkModeGate: true`.
 - [ ] `manifest.json` points `executableFallback.script` to `scripts/reelora_edit.py`.
 - [ ] `SKILL.md` requires actual rendering when MCP or local FFmpeg execution is available.
 
@@ -144,12 +148,12 @@ REELORA_FLASH_STRENGTH=0.08
 
 The repository workflow `.github/workflows/release-skill.yml` automatically builds and publishes the ZIP when release-relevant files are pushed to `main`.
 
-For v0.7.2, verify:
+For v0.7.3, verify:
 
 ```text
-Tag: v0.7.2
-Title: Reelora v0.7.2 – Genuine AI Video Re-Edit
-Asset: reelora-skill-v0.7.2.zip
+Tag: v0.7.3
+Title: Reelora v0.7.3 – Chat + Work Compatibility
+Asset: reelora-skill-v0.7.3.zip
 ```
 
 - [ ] GitHub Actions `Reelora CI` passes.
@@ -161,8 +165,10 @@ Asset: reelora-skill-v0.7.2.zip
 
 ## 7. ChatGPT Skill upload test
 
-- [ ] Download `reelora-skill-v0.7.2.zip` from GitHub Releases.
+- [ ] Download `reelora-skill-v0.7.3.zip` from GitHub Releases.
 - [ ] Upload/install the ZIP in ChatGPT Skills.
+- [ ] In an ordinary Chat conversation, invoke `$reelora` with an uploaded video and confirm the skill is selected without switching to Work.
+- [ ] In a second ordinary Chat conversation, use a natural request without naming Reelora and confirm implicit invocation is available.
 - [ ] Confirm the ZIP contains `scripts/reelora_edit.py`.
 - [ ] Run one product/fashion edit without supplying music and verify the song is actually replaced.
 - [ ] Run one edit with a supplied song and verify that supplied song is used.

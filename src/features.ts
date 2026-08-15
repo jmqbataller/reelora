@@ -29,6 +29,8 @@ export const REELORA_FEATURES = [
   "material-remix-validation",
   "audible-remix-audio-validation",
   "no-logo-watermark-from-outro",
+  "ordinary-chat-skill-invocation",
+  "implicit-reelora-invocation",
   "automatic-landscape-to-9x16-reframe",
   "tracked-subject-smart-crop",
   "real-pixel-blur-fill-fallback",
