@@ -12,7 +12,8 @@ It should automatically:
 - cut clips tightly;
 - rearrange them for an engaging progression;
 - crop/reframe toward the requested product focus;
-- add tasteful transitions;
+- add sparse premium liquid/bloom/refraction/particle/light/glass/fabric/luma transitions;
+- use restrained real-pixel parallax/orbit/depth animation;
 - use fade-in and fade-out where appropriate;
 - synchronize cuts to supplied music beats when possible;
 - place the uploaded outro last;
@@ -35,7 +36,7 @@ Preferred techniques:
 - fade-in and fade-out;
 - beat-synchronized pacing.
 
-Avoid excessive transitions or effects that distract from the product.
+Avoid generic swing, slide, bounce, repeated directional wipes, or excessive effects that distract from the product.
 
 ## Forbidden by default
 

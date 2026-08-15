@@ -7,7 +7,7 @@ Use this checklist before publishing a new ChatGPT Skill ZIP.
 - [ ] Confirm `package.json` contains the intended release version.
 - [ ] Confirm `README.md` Download ZIP link points to the same version.
 - [ ] Add the release entry to `CHANGELOG.md`.
-- [ ] Confirm `SKILL.md` describes executable fallback behavior, music replacement, and modern cut-driven transitions.
+- [ ] Confirm `SKILL.md` describes executable fallback behavior, music replacement, premium transitions, and real-pixel animation.
 - [ ] Confirm `.env.example` documents current runtime defaults.
 
 ## 2. Local validation
@@ -18,18 +18,20 @@ From the repository root, run:
 npm install
 npm run check
 npm run build
+npm test
 npm run pack:skill
 ```
 
-Expected ZIP for v0.5.1:
+Expected ZIP for v0.6.0:
 
 ```text
-dist-skill/reelora-skill-v0.5.1.zip
+dist-skill/reelora-skill-v0.6.0.zip
 ```
 
 - [ ] `npm install` completes successfully.
 - [ ] `npm run check` reports no TypeScript errors.
 - [ ] `npm run build` completes successfully.
+- [ ] `npm test` passes TypeScript/Python selectors and FFmpeg compatibility checks for every premium family.
 - [ ] `npm run pack:skill` creates the versioned ZIP.
 
 ## 3. Verify ZIP contents
@@ -46,7 +48,7 @@ reelora/scripts/reelora_edit.py
 
 - [ ] ZIP opens without corruption.
 - [ ] ZIP has one top-level `reelora/` folder.
-- [ ] `manifest.json` shows version `0.5.1`.
+- [ ] `manifest.json` shows version `0.6.0`.
 - [ ] `manifest.json` points `executableFallback.script` to `scripts/reelora_edit.py`.
 - [ ] `SKILL.md` requires actual rendering when MCP or local FFmpeg execution is available.
 
@@ -81,7 +83,9 @@ Repeat once with `--music supplied-song.mp3`:
 - [ ] No third-party copyrighted recording/sample is bundled by the Reelora original generator.
 - [ ] Cut timing is visibly varied rather than repeating the same duration for every clip.
 - [ ] Most fashion/ecommerce changes are clean beat cuts.
-- [ ] Micro-motion/whip/dip effects are occasional only.
+- [ ] Premium liquid/bloom/refraction/particle/light/glass/silk/luma effects appear only at selected moments.
+- [ ] No generic swing, slide, bounce, or repeated directional wipe pattern remains.
+- [ ] Premium animation uses restrained real-pixel crop/scale motion.
 - [ ] No long repeated dissolves or obvious effect on every cut.
 - [ ] Flash is zero/one or otherwise extremely sparse for a short Reel.
 - [ ] No rapid strobing or repeated full-white frames.
@@ -100,12 +104,12 @@ REELORA_FLASH_STRENGTH=0.08
 
 The repository workflow `.github/workflows/release-skill.yml` automatically builds and publishes the ZIP when release-relevant files are pushed to `main`.
 
-For v0.5.1, verify:
+For v0.6.0, verify:
 
 ```text
-Tag: v0.5.1
-Title: Reelora v0.5.1 – Executable Music Replacement + Cleaner Beat Cuts
-Asset: reelora-skill-v0.5.1.zip
+Tag: v0.6.0
+Title: Reelora v0.6.0 – Premium Transitions + Real-Pixel Animation
+Asset: reelora-skill-v0.6.0.zip
 ```
 
 - [ ] GitHub Actions `Reelora CI` passes.
@@ -117,12 +121,12 @@ Asset: reelora-skill-v0.5.1.zip
 
 ## 7. ChatGPT Skill upload test
 
-- [ ] Download `reelora-skill-v0.5.1.zip` from GitHub Releases.
+- [ ] Download `reelora-skill-v0.6.0.zip` from GitHub Releases.
 - [ ] Upload/install the ZIP in ChatGPT Skills.
 - [ ] Confirm the ZIP contains `scripts/reelora_edit.py`.
 - [ ] Run one product/fashion edit without supplying music and verify the song is actually replaced.
 - [ ] Run one edit with a supplied song and verify that supplied song is used.
-- [ ] Confirm transitions feel cut-driven rather than slideshow-like.
+- [ ] Confirm selected transition moments feel premium and non-template while clean cuts still carry most of the Reel.
 - [ ] Confirm preservation rules still apply.
 
 ## Release complete

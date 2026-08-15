@@ -25,7 +25,18 @@ export type EditingStyle =
   | "luxury"
   | "clean_commercial";
 export type PlatformPreset = "instagram_reels" | "tiktok" | "youtube_shorts" | "facebook_reels";
-export type TransitionMode = "auto" | "cuts" | "soft" | "motion";
+export type TransitionMode = "auto" | "cuts" | "soft" | "motion" | "premium_fx";
+export type TransitionIntensity = "subtle" | "balanced" | "bold";
+export type PremiumTransitionFamily =
+  | "liquid-splash"
+  | "ink-bloom"
+  | "prism-refraction"
+  | "particle-crystallize"
+  | "light-sweep"
+  | "glass-ripple"
+  | "silk-fold"
+  | "luma-bloom";
+export type AnimationIntensity = "off" | "subtle" | "balanced";
 export type HardwareEncoder = "auto" | "libx264" | "h264_nvenc" | "h264_qsv" | "h264_amf";
 export type TimelineFormat = "json" | "csv" | "edl";
 export type ReviewState = "draft" | "review" | "approved";
@@ -117,6 +128,11 @@ export interface ReeloraAdvancedOptions {
   referenceReel?: string;
   brandProfile?: string;
   transitionMode?: TransitionMode;
+  premiumTransitionEffects?: boolean;
+  transitionIntensity?: TransitionIntensity;
+  transitionFamilies?: PremiumTransitionFamily[];
+  premiumAnimationEffects?: boolean;
+  animationIntensity?: AnimationIntensity;
   autoThumbnail?: boolean;
   coverCrop?: boolean;
   qualityReport?: boolean;

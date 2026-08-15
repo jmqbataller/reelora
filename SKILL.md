@@ -1,9 +1,9 @@
 ---
 name: reelora
-description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, replace inconsistent source audio with trend-inspired original or verified commercial-safe music, use mostly clean beat cuts with restrained micro-transitions/flash accents, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
+description: Preservation-first automatic Reel director for uploaded product/fashion raw videos plus a supplied ending/outro. Use it to choose the best clips, cut, rearrange, crop/reframe, track a requested garment/product, replace inconsistent source audio with trend-inspired original or verified commercial-safe music, add sparse premium liquid/bloom/refraction/particle/light/glass/fabric/luma transitions and real-pixel spatial animation, validate product/model/fabric integrity, and export a polished vertical Reel. Never add overlay text, overlay objects, or AI voice-over and never generate replacement model/product/fabric pixels.
 ---
 
-# Reelora v0.5.1
+# Reelora v0.6.0
 
 ## Core workflow
 
@@ -15,7 +15,7 @@ Do not require manual timestamps or clip selection unless the user asks for manu
 
 Preferred workflow:
 
-`inspect → score moments → reject weak/duplicate/obstructed footage → build varied beat-aware shot plan → enforce requested product distribution → safe crop/reframe/track → mostly clean beat cuts + sparse micro-transition/flash accents → replace source audio with trend-inspired or supplied music → preservation QA → supplied outro → verify rendered audio/video → export Reel + reports/timelines`
+`inspect → score moments → reject weak/duplicate/obstructed footage → build varied beat-aware shot plan → enforce requested product distribution → safe crop/reframe/track → clean beat cuts + sparse premium transitions + restrained real-pixel animation → replace source audio with trend-inspired or supplied music → preservation QA → supplied outro → verify rendered audio/video → export Reel + reports/timelines`
 
 ## Mandatory execution rule
 
@@ -91,7 +91,7 @@ Prefer strong requested-product visibility, sharpness, lighting, stability, moti
 
 Reject or strongly de-prioritize severe blur, unusable shake, duplicate framing, obstructed product views, awkward setup frames, poor exposure when alternatives exist, distracting/mirror-risk footage, and shots requiring invented pixels.
 
-## Modern transition and pacing rules
+## Premium transition, animation, and pacing rules
 
 The default social/fashion edit must not look like a slideshow or a transition template.
 
@@ -102,12 +102,15 @@ Use these priorities:
 - fast detail cuts may be about 0.6–1.0 seconds;
 - normal product/focus shots may be about 0.9–1.7 seconds;
 - hero/product-hold shots may be about 1.5–2.6 seconds when the footage supports it;
-- use a micro motion/whip accent only occasionally, roughly every 5–7 transitions at most;
-- use very short fade/dip transitions, generally around 0.04–0.10 seconds;
-- avoid long dissolves, repeated left/right wipes, and identical transition patterns;
+- use selected liquid-splash, ink-bloom, prism-refraction, particle-crystallize, light-sweep, glass-ripple, silk-fold, or luma-bloom moments;
+- keep premium effects sparse, usually one every 3–5 transitions depending on style;
+- use `subtle`, `balanced`, or `bold` timing while enforcing the 0.10–0.34 second safety cap;
+- avoid generic swing, slide, bounce, repeated directional wipes, long dissolves, and identical transition patterns;
 - do not put a visible effect on every cut.
 
-Fashion and fast-ecommerce should feel cut-driven, not dissolve-driven. Luxury/cinematic may use a slightly softer micro-dip, but still keep effects short.
+Use real-pixel animation only: hero-frame breathe, product parallax orbit, macro orbit drift, editorial depth float, kinetic product arc, or silk camera float. These are conservative crop/scale moves; never synthesize water, particles, fabric, product parts, or replacement frames.
+
+Fashion and fast-ecommerce may use liquid, particle, ink, or refraction moments. Luxury/cinematic may favor silk, glass, ink, and luma effects. Minimal/clean-commercial should favor refraction, light, and luma. Always use the outro-safe dip into the supplied ending.
 
 Flash accents are optional accents only. Prefer a single restrained flash around a strong beat/drop in a short Reel. Never use rapid strobing, repeated full-white frames, aggressive flicker, or flash effects that reduce product readability.
 
@@ -134,7 +137,7 @@ At minimum:
 1. Probe the final MP4 with FFprobe and confirm it contains both a video stream and an audio stream when music was requested/defaulted.
 2. When using `scripts/reelora_edit.py`, check its JSON result and require `source_audio_replaced: true` for the default automatic workflow.
 3. Confirm the reported `music_source` is `reelora-original` or `user-supplied` as appropriate.
-4. Check that transition timing is mostly beat/clean cuts and not a uniform repeated long dissolve pattern.
+4. Check that the audit names the expected premium families, keeps effects sparse, and avoids a uniform repeated pattern.
 5. If any of these checks fail, treat the render as failed and re-render/fix the pipeline rather than presenting it as complete.
 
 ## Integrity guards

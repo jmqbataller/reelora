@@ -2,6 +2,30 @@
 
 All notable changes to Reelora are documented here.
 
+## [0.6.0] - 2026-08-15
+
+### Added
+
+- Eight FFmpeg-validated premium transition families: liquid splash, ink bloom, prism refraction, particle crystallize, light sweep, glass ripple, silk fold, and luma bloom.
+- Premium real-pixel animation directions for hero breathing, product parallax, macro orbit, editorial depth, kinetic product arcs, and silk camera movement.
+- `premium_fx` transition mode, `subtle|balanced|bold` intensity, transition-family allowlists, animation enable/disable, and animation intensity controls in the TypeScript/MCP contract.
+- Matching premium-effect behavior and CLI controls in the executable ChatGPT Skill fallback.
+- Transition-family and animation metadata in render audits.
+- TypeScript/Python selector tests and an FFmpeg compatibility test for every premium transition primitive.
+
+### Changed
+
+- Removed generic `smoothleft` / `smoothright` selection from the automatic premium transition engine.
+- Reworked default effect scheduling so clean beat cuts carry the sequence while designed transition moments appear sparsely.
+- Protected the supplied ending with a dedicated outro-safe dip.
+- Added square-pixel normalization after animated crop/scale transforms to prevent display-aspect distortion.
+
+### Preservation
+
+- Premium effects transform only real uploaded frames through deterministic FFmpeg filters.
+- Reelora does not synthesize literal water, ink, glass, particles, fabric, products, models, backgrounds, or replacement frames.
+- Existing product, fabric, color, logo, face, body, crop-safety, and no-overlay rules remain mandatory.
+
 ## [0.5.1] - 2026-08-14
 
 ### Fixed
