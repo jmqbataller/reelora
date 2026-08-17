@@ -1,10 +1,10 @@
 interface:
   display_name: "Reelora"
-  short_description: "Re-edit uploaded videos into premium vertical Reels"
+  short_description: "Actually re-edit uploaded videos into premium vertical Reels"
   icon_small: "./assets/icon.svg"
   icon_large: "./assets/icon.svg"
   brand_color: "#FEBD08"
-  default_prompt: "Use $reelora to re-edit my uploaded video into a premium vertical Reel."
+  default_prompt: "Use $reelora to actually inspect and render my uploaded video into a premium vertical Reel. Do not ask for screenshots when an executable media runtime is available."
 
 policy:
   allow_implicit_invocation: true

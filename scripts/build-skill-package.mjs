@@ -20,13 +20,14 @@ await mkdir(references, { recursive: true });
 await mkdir(scripts, { recursive: true });
 
 const baseSkill = await readFile(path.join(root, "SKILL.md"), "utf8");
-const musicDirective = `\n\n## Executable media addendum\n\nFor automatic soundtrack replacement, beat-aware pacing, verified music-rights behavior, the sample-free Reelora original fallback, premium transition families, and real-pixel animation rules, read \`references/MUSIC_AND_TRANSITIONS.md\`. For one or many uploaded generated videos or any landscape-to-Reel request, read \`references/AI_VIDEO_REMIX_AND_REFRAME.md\`. Pass every uploaded source to the renderer and require the source-usage audit to confirm that all were used. When MCP is unavailable but Python + FFmpeg + FFprobe are available, run \`scripts/reelora_edit.py\` rather than stopping at instructions. Unless the user explicitly requests silence/original sound/mix, the automatic workflow must replace source clip audio with the selected/generated music bed and verify the final output. Never describe an unverified random track as copyright-free.\n`;
-await writeFile(path.join(skillRoot, "SKILL.md"), `${baseSkill.trimEnd()}${musicDirective}`, "utf8");
+const executionDirective = `\n\n## Executable media addendum\n\nFor automatic soundtrack replacement, beat-aware pacing, verified music-rights behavior, the sample-free Reelora original fallback, premium transition families, and real-pixel animation rules, read \`references/MUSIC_AND_TRANSITIONS.md\`. For one or many uploaded generated videos or any landscape-to-Reel request, read \`references/AI_VIDEO_REMIX_AND_REFRAME.md\`. For Custom GPT attachment behavior, read \`references/CUSTOM_GPT_SETUP.md\` and \`references/CUSTOM_GPT_INSTRUCTIONS.md\`. Pass every uploaded source to the renderer and require the source-usage audit to confirm that all were used. When an attached video exists and Code Interpreter/Data Analysis or Python + FFmpeg + FFprobe are available, inspect and render the actual attachment rather than asking for screenshots or manual timestamps. If the user specifies a duration range such as 11-13 seconds, treat the finished rendered duration as a hard constraint and verify it after rendering. When MCP is unavailable but Python + FFmpeg + FFprobe are available, run \`scripts/reelora_edit.py\` rather than stopping at instructions. Unless the user explicitly requests silence/original sound/mix, the automatic workflow must replace source clip audio with the selected/generated music bed and verify the final output. Never describe an unverified random track as copyright-free.\n`;
+await writeFile(path.join(skillRoot, "SKILL.md"), `${baseSkill.trimEnd()}${executionDirective}`, "utf8");
 await cp(path.join(root, "agents", "openai.yaml"), path.join(agents, "openai.yaml"));
 await cp(path.join(root, "assets", "icon.svg"), path.join(assets, "icon.svg"));
-for (const file of ["EDITING_RULES.md", "PRESERVATION.md", "SHOT_DISTRIBUTION.md", "FEATURES.md"]) {
+for (const file of ["EDITING_RULES.md", "PRESERVATION.md", "SHOT_DISTRIBUTION.md", "FEATURES.md", "CUSTOM_GPT_SETUP.md"]) {
   await cp(path.join(root, "docs", file), path.join(references, file));
 }
+await cp(path.join(root, "custom-gpt-instructions.md"), path.join(references, "CUSTOM_GPT_INSTRUCTIONS.md"));
 await cp(path.join(root, "skill", "references"), references, { recursive: true });
 for (const file of ["check_reelora_runtime.py", "reelora_edit.py"]) {
   await cp(path.join(root, "skill", "scripts", file), path.join(scripts, file));
@@ -43,10 +44,20 @@ await writeFile(
       surfaceCompatibility: {
         ordinaryChat: true,
         workMode: true,
+        customGpt: true,
         explicitInvocation: ["$reelora", "@Reelora"],
         implicitInvocation: true,
         noWorkModeGate: true,
-        renderWhenRuntimeAvailable: true
+        renderWhenRuntimeAvailable: true,
+        doNotRequestScreenshotsWhenVideoAttached: true
+      },
+      customGpt: {
+        setupGuide: "references/CUSTOM_GPT_SETUP.md",
+        instructions: "references/CUSTOM_GPT_INSTRUCTIONS.md",
+        codeInterpreterForPrivateChatAttachments: true,
+        hostedActionOpenApiPath: "/openapi.json",
+        hostedActionAsyncRendering: true,
+        durationRangesAreHardConstraints: true
       },
       executableFallback: {
         script: "scripts/reelora_edit.py",

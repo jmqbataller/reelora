@@ -2,6 +2,7 @@ import express from "express";
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
+import { registerCustomGptActionApi } from "./action-api.js";
 import { createReeloraMcpServer } from "./mcp.js";
 import { reeloraDataDir } from "./engine.js";
 
@@ -12,6 +13,7 @@ const outputsDir = path.join(dataDir, "outputs");
 await mkdir(outputsDir, { recursive: true });
 
 app.disable("x-powered-by");
+app.set("trust proxy", 1);
 app.use(express.json({ limit: "16mb" }));
 app.use(
   "/outputs",
@@ -23,8 +25,23 @@ app.use(
 );
 
 app.get("/health", (_req, res) => {
-  res.json({ ok: true, service: "reelora", version: "0.7.3", chatCompatible: true, implicitInvocation: true, preservationMode: "strict-no-generative", aiVideoRemix: true, materialRemixValidation: true, multiSourceCoverage: true, automaticVerticalReframe: true });
+  res.json({
+    ok: true,
+    service: "reelora",
+    version: "0.8.0",
+    chatCompatible: true,
+    implicitInvocation: true,
+    customGptActions: true,
+    durationRanges: true,
+    preservationMode: "strict-no-generative",
+    aiVideoRemix: true,
+    materialRemixValidation: true,
+    multiSourceCoverage: true,
+    automaticVerticalReframe: true,
+  });
 });
+
+registerCustomGptActionApi(app);
 
 app.post("/mcp", async (req, res) => {
   const server = createReeloraMcpServer();
@@ -58,5 +75,5 @@ app.delete("/mcp", (_req, res) => {
 });
 
 app.listen(port, "0.0.0.0", () => {
-  console.log(`Reelora v0.7.3 MCP server listening on port ${port}`);
+  console.log(`Reelora v0.8.0 server listening on port ${port}`);
 });
