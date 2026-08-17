@@ -198,7 +198,7 @@ async function runJob(jobId: string, input: ActionInput) {
     });
 
     let rendered = await render(duration.targetDuration);
-    const actualDuration = Number(rendered.duration);
+    const actualDuration = Number(rendered.durationEstimate);
 
     if (duration.hasRange && !durationWithinRequestedRange(actualDuration, duration)) {
       const desired = duration.targetDuration ?? ((duration.minDuration! + duration.maxDuration!) / 2);
@@ -208,7 +208,7 @@ async function runJob(jobId: string, input: ActionInput) {
       }
     }
 
-    const finalDuration = Number(rendered.duration);
+    const finalDuration = Number(rendered.durationEstimate);
     if (duration.hasRange && !durationWithinRequestedRange(finalDuration, duration)) {
       throw new Error(`Rendered duration ${finalDuration.toFixed(3)}s is outside the requested ${duration.minDuration}-${duration.maxDuration}s range.`);
     }
